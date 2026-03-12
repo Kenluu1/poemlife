@@ -85,8 +85,6 @@ class _HomePageState extends State<HomePage> {
           SizedBox(height: 20),
 
 
-          _posts.isEmpty ? _buildEmptyState() : _buildPostList(),
-
 
           if (_isLoadingMore)
             Padding(
@@ -127,9 +125,6 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildMoodCard(String title, Color color, String imagePath) {
     return GestureDetector(
-      onTap: () {
-        print("Pindah ke page $title");
-      },
       child: Container(
         width: 140,
         margin: EdgeInsets.only(right: 15),
@@ -203,23 +198,14 @@ class _HomePageState extends State<HomePage> {
           children: [
             Icon(Icons.inbox_outlined, size: 60, color: Colors.grey),
             SizedBox(height: 10),
-            Text("Belum ada postingan", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            Text("Not Posted yet", style: TextStyle(color: Colors.grey, fontSize: 16)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPostList() {
-    // post
-    return Column(
-      children: [
-        _buildPostCard("Lauren Jarvis-Gibson", "15 minutes ago", "Your Wounds"),
-        SizedBox(height: 15),
-        _buildPostCard("Michael Timothy", "20 hours ago", "Your Wounds"),
-      ],
-    );
-  }
+
 
   Widget _buildPostCard(String name, String time, String title) {
     return Container(
