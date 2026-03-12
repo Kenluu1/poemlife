@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'signin.dart';
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
 
@@ -10,7 +10,6 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-
 
   final List<Map<String, String>> _landingData = [
     {
@@ -37,13 +36,20 @@ class _LandingPageState extends State<LandingPage> {
       body: SafeArea(
         child: Column(
           children: [
+            // TOMBOL SKIP
             Align(
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: () {
-                  //
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SignInPage()),
+                  );
                 },
-                child: const Text("Skip", style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  "Skip",
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
             ),
 
@@ -69,6 +75,7 @@ class _LandingPageState extends State<LandingPage> {
                         ),
                         const SizedBox(height: 40),
 
+                        // INDIKATOR TITIK
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
@@ -114,7 +121,7 @@ class _LandingPageState extends State<LandingPage> {
               ),
             ),
 
-            //
+            // TOMBOL GET STARTED / CONTINUE
             Padding(
               padding: const EdgeInsets.all(30),
               child: SizedBox(
@@ -126,6 +133,12 @@ class _LandingPageState extends State<LandingPage> {
                       _pageController.nextPage(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
+                      );
+                    } else {
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SignInPage()),
                       );
                     }
                   },
