@@ -12,7 +12,7 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingMore = false;
 
 
-  List<Map<String, String>> _posts = [];
+
 
   ScrollController _scrollController = ScrollController();
 
@@ -190,22 +190,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 50.0),
-        child: Column(
-          children: [
-            Icon(Icons.inbox_outlined, size: 60, color: Colors.grey),
-            SizedBox(height: 10),
-            Text("Not Posted yet", style: TextStyle(color: Colors.grey, fontSize: 16)),
-          ],
-        ),
-      ),
-    );
-  }
-
-
 
   Widget _buildPostCard(String name, String time, String title) {
     return Container(
@@ -280,9 +264,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================
-  // SKELETON LOADING
-  // ==========================================
+
   Widget _buildSkeleton() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
