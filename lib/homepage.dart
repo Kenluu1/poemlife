@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'searchpage.dart';
+import 'notificationpage.dart';
+
+void main() {
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: HomePage(),
+  ));
+}
 
 class HomePage extends StatefulWidget {
   @override
@@ -7,20 +16,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late PageController _pageController;
+  int _currentIndex = 0;
+  int _searchKey = 0;
+  int _notificationKey = 0;
   bool _isInitialLoading = true;
   bool _isRefreshing = false;
   bool _isLoadingMore = false;
-
-
-
-
   ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
     _loadInitialData();
-
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
@@ -29,40 +38,147 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onNavTapped(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   Future<void> _loadInitialData() async {
     await Future.delayed(Duration(seconds: 2));
-    setState(() {
-      _isInitialLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isInitialLoading = false;
+      });
+    }
   }
 
   Future<void> _handleRefresh() async {
     setState(() => _isRefreshing = true);
     await Future.delayed(Duration(seconds: 2));
-    setState(() => _isRefreshing = false);
+    if (mounted) {
+      setState(() => _isRefreshing = false);
+    }
   }
-
 
   Future<void> _loadMoreData() async {
     if (_isLoadingMore) return;
     setState(() => _isLoadingMore = true);
     await Future.delayed(Duration(seconds: 2));
-    setState(() => _isLoadingMore = false);
+    if (mounted) {
+      setState(() => _isLoadingMore = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: _isInitialLoading ? _buildSkeleton() : _buildMainContent(),
-      ),
+      extendBody: true,
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          if (index == 0 && _currentIndex != 0) {
+            setState(() { _isInitialLoading = true; });
+            _loadInitialData();
+          } else if (index == 1 && _currentIndex != 1) {
+            setState(() { _searchKey++; });
+          } else if (index == 3 && _currentIndex != 3) {
+            setState(() { _notificationKey++; });
+          }
 
-      bottomNavigationBar: _buildBottomNav(),
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        children: [
+          SafeArea(
+            child: _isInitialLoading ? _buildSkeleton() : _buildMainContent(),
+          ),
+
+
+          SearchPage(key: ValueKey('search_$_searchKey')),
+
+          _buildDummyPage("Add Post"),
+
+
+          NotificationPage(key: ValueKey('notif_$_notificationKey')),
+
+          _buildDummyPage("Profile"),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: _buildInteractiveBottomNav(),
+        ),
+      ),
     );
   }
 
+  Widget _buildInteractiveBottomNav() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.red.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildNavItem(icon: Icons.home_outlined, index: 0),
+          _buildNavItem(icon: Icons.search, index: 1),
+          GestureDetector(
+            onTap: () => _onNavTapped(2),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF993B3B),
+              child: Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+          _buildNavItem(icon: Icons.notifications_none, index: 3),
+          _buildNavItem(icon: Icons.person_outline, index: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem({required IconData icon, required int index}) {
+    bool isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => _onNavTapped(index),
+      child: Container(
+        padding: EdgeInsets.all(8.0),
+        child: Icon(
+          icon,
+          color: isSelected ? Color(0xFF993B3B) : Colors.grey,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDummyPage(String title) {
+    return Center(
+      child: Text(title, style: TextStyle(fontSize: 24, color: Colors.grey)),
+    );
+  }
 
   Widget _buildMainContent() {
     return RefreshIndicator(
@@ -84,18 +200,17 @@ class _HomePageState extends State<HomePage> {
           _buildTabs(),
           SizedBox(height: 20),
 
-
-
           if (_isLoadingMore)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: _buildCustomLoadingDots(),
             ),
+
+          SizedBox(height: 100),
         ],
       ),
     );
   }
-
 
   Widget _buildHeader() {
     return Column(
@@ -108,23 +223,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
   Widget _buildMoodCarousel() {
     return SizedBox(
       height: 100,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          _buildMoodCard("Sadness", Color(0xFF67A3D9), 'assets/Sad.png'),
-          _buildMoodCard("Happiness", Color(0xFFF29C38), 'assets/Happy.png'),
-          _buildMoodCard("Anger", Color(0xFFE57373), 'assets/anger.png'),
+          _buildMoodCard("Sadness", Color(0xFF67A3D9), 'assets/Sad.png', () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Sadness", color: Color(0xFF67A3D9))));
+          }),
+          _buildMoodCard("Happiness", Color(0xFFF29C38), 'assets/Happy.png', () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Happiness", color: Color(0xFFF29C38))));
+          }),
+          _buildMoodCard("Anger", Color(0xFFE57373), 'assets/anger.png', () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Anger", color: Color(0xFFE57373))));
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildMoodCard(String title, Color color, String imagePath) {
+  Widget _buildMoodCard(String title, Color color, String imagePath, VoidCallback onTap) {
     return GestureDetector(
+      onTap: onTap,
       child: Container(
         width: 140,
         margin: EdgeInsets.only(right: 15),
@@ -139,19 +260,19 @@ class _HomePageState extends State<HomePage> {
               alignment: Alignment.topRight,
               child: Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
-
-
             Align(
               alignment: Alignment.bottomLeft,
-              child: Image.asset(
-                imagePath,
+              child: Container(
                 width: 50,
                 height: 50,
-                fit: BoxFit.contain,
+                color: Colors.white24,
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Icon(Icons.image, color: Colors.white),
+                ),
               ),
             ),
-
-
             Align(
               alignment: Alignment.bottomRight,
               child: Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
@@ -190,66 +311,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-  Widget _buildPostCard(String name, String time, String title) {
-    return Container(
-      padding: EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.red.shade100),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(radius: 15, backgroundColor: Colors.grey.shade300),
-              SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  Text(time, style: TextStyle(fontSize: 10, color: Colors.grey)),
-                ],
-              )
-            ],
-          ),
-          SizedBox(height: 20),
-          Text(title, style: TextStyle(fontFamily: 'Serif', fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 15),
-          Text(
-            "Time doesn't heal wounds\nto make you forget.\n\nIt doesn't heal wounds to\nerase the memories.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Serif', color: Colors.black87),
-          ),
-          SizedBox(height: 15),
-          Text("Read More", style: TextStyle(color: Color(0xFF993B3B), fontSize: 12)),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildInteraction(Icons.language, "394"),
-              _buildInteraction(Icons.favorite_border, "394"),
-              _buildInteraction(Icons.chat_bubble_outline, "394"),
-              Icon(Icons.bookmark_border, color: Colors.grey, size: 18),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInteraction(IconData icon, String count) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey, size: 18),
-        SizedBox(width: 5),
-        Text(count, style: TextStyle(color: Colors.grey, fontSize: 12)),
-      ],
-    );
-  }
-
-
   Widget _buildCustomLoadingDots() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -263,7 +324,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
 
   Widget _buildSkeleton() {
     return Shimmer.fromColors(
@@ -300,29 +360,21 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
 
+class MoodPage extends StatelessWidget {
+  final String moodName;
+  final Color color;
 
-  Widget _buildBottomNav() {
-    return Container(
-      margin: EdgeInsets.all(20),
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.red.shade100),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(Icons.home_outlined, color: Color(0xFF993B3B)),
-          Icon(Icons.search, color: Colors.grey),
-          CircleAvatar(
-            backgroundColor: Color(0xFF993B3B),
-            child: Icon(Icons.add, color: Colors.white),
-          ),
-          Icon(Icons.notifications_none, color: Colors.grey),
-          Icon(Icons.person_outline, color: Colors.grey),
-        ],
+  const MoodPage({Key? key, required this.moodName, required this.color}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(moodName),
+        backgroundColor: color,
+        foregroundColor: Colors.white,
       ),
     );
   }
