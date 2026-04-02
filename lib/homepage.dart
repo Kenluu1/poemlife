@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
   bool _isInitialLoading = true;
   bool _isRefreshing = false;
 
-  // === STATE BARU UNTUK TAB FOR YOU / FOLLOWING ===
+
   int _activeFeedTab = 0; // 0 = For You, 1 = Following
   bool _isFeedLoading = false;
 
@@ -289,9 +289,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // =========================================================
-  // TAB BAR INTERAKTIF (FOR YOU & FOLLOWING)
-  // =========================================================
+
   Widget _buildTabs() {
     return Row(
       children: [
