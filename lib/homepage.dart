@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'searchpage.dart';
 import 'notificationpage.dart';
+import 'profilepage.dart';
+import 'addpage.dart';
+
+
+// import 'sadness_page.dart';
+// import 'happiness_page.dart';
+// import 'anger_page.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -20,9 +27,14 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   int _searchKey = 0;
   int _notificationKey = 0;
+  int _profileKey = 0;
   bool _isInitialLoading = true;
   bool _isRefreshing = false;
-  bool _isLoadingMore = false;
+
+  // === STATE BARU UNTUK TAB FOR YOU / FOLLOWING ===
+  int _activeFeedTab = 0; // 0 = For You, 1 = Following
+  bool _isFeedLoading = false;
+
   ScrollController _scrollController = ScrollController();
 
   @override
@@ -30,12 +42,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
     _loadInitialData();
-
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-        _loadMoreData();
-      }
-    });
   }
 
   @override
@@ -70,12 +76,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _loadMoreData() async {
-    if (_isLoadingMore) return;
-    setState(() => _isLoadingMore = true);
-    await Future.delayed(Duration(seconds: 2));
+
+  void _onFeedTabTapped(int index) async {
+    if (_activeFeedTab == index) return;
+
+    setState(() {
+      _activeFeedTab = index;
+      _isFeedLoading = true;
+    });
+
+    await Future.delayed(Duration(milliseconds: 1000));
+
     if (mounted) {
-      setState(() => _isLoadingMore = false);
+      setState(() {
+        _isFeedLoading = false;
+      });
     }
   }
 
@@ -92,8 +107,10 @@ class _HomePageState extends State<HomePage> {
             _loadInitialData();
           } else if (index == 1 && _currentIndex != 1) {
             setState(() { _searchKey++; });
-          } else if (index == 3 && _currentIndex != 3) {
+          } else if (index == 2 && _currentIndex != 2) {
             setState(() { _notificationKey++; });
+          } else if (index == 3 && _currentIndex != 3) {
+            setState(() { _profileKey++; });
           }
 
           setState(() {
@@ -104,16 +121,9 @@ class _HomePageState extends State<HomePage> {
           SafeArea(
             child: _isInitialLoading ? _buildSkeleton() : _buildMainContent(),
           ),
-
-
           SearchPage(key: ValueKey('search_$_searchKey')),
-
-          _buildDummyPage("Add Post"),
-
-
           NotificationPage(key: ValueKey('notif_$_notificationKey')),
-
-          _buildDummyPage("Profile"),
+          ProfilePage(key: ValueKey('profile_$_profileKey')),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -146,15 +156,19 @@ class _HomePageState extends State<HomePage> {
         children: [
           _buildNavItem(icon: Icons.home_outlined, index: 0),
           _buildNavItem(icon: Icons.search, index: 1),
+
           GestureDetector(
-            onTap: () => _onNavTapped(2),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPage()));
+            },
             child: CircleAvatar(
               backgroundColor: Color(0xFF993B3B),
               child: Icon(Icons.add, color: Colors.white),
             ),
           ),
-          _buildNavItem(icon: Icons.notifications_none, index: 3),
-          _buildNavItem(icon: Icons.person_outline, index: 4),
+
+          _buildNavItem(icon: Icons.notifications_none, index: 2),
+          _buildNavItem(icon: Icons.person_outline, index: 3),
         ],
       ),
     );
@@ -174,12 +188,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDummyPage(String title) {
-    return Center(
-      child: Text(title, style: TextStyle(fontSize: 24, color: Colors.grey)),
-    );
-  }
-
   Widget _buildMainContent() {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
@@ -195,16 +203,11 @@ class _HomePageState extends State<HomePage> {
 
           _buildHeader(),
           SizedBox(height: 20),
-          _buildMoodCarousel(),
+           _buildMoodCarousel(),
           SizedBox(height: 20),
           _buildTabs(),
-          SizedBox(height: 20),
-
-          if (_isLoadingMore)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: _buildCustomLoadingDots(),
-            ),
+          SizedBox(height: 30),
+          _buildFeedContent(),
 
           SizedBox(height: 100),
         ],
@@ -230,13 +233,16 @@ class _HomePageState extends State<HomePage> {
         scrollDirection: Axis.horizontal,
         children: [
           _buildMoodCard("Sadness", Color(0xFF67A3D9), 'assets/Sad.png', () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Sadness", color: Color(0xFF67A3D9))));
+
+            // Navigator.push(context, MaterialPageRoute(builder: (context) => const SadnessPage()));
           }),
           _buildMoodCard("Happiness", Color(0xFFF29C38), 'assets/Happy.png', () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Happiness", color: Color(0xFFF29C38))));
+
+            // Navigator.push(context, MaterialPageRoute(builder: (context) => const HappinessPage()));
           }),
           _buildMoodCard("Anger", Color(0xFFE57373), 'assets/anger.png', () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => MoodPage(moodName: "Anger", color: Color(0xFFE57373))));
+
+            // Navigator.push(context, MaterialPageRoute(builder: (context) => const AngerPage()));
           }),
         ],
       ),
@@ -283,32 +289,72 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // =========================================================
+  // TAB BAR INTERAKTIF (FOR YOU & FOLLOWING)
+  // =========================================================
   Widget _buildTabs() {
     return Row(
       children: [
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: Color(0xFF993B3B),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(child: Text("For You", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-          ),
-        ),
+        Expanded(child: _buildSingleTab("For You", 0)),
         SizedBox(width: 15),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(child: Text("Following", style: TextStyle(color: Colors.black54))),
-          ),
-        ),
+        Expanded(child: _buildSingleTab("Following", 1)),
       ],
     );
+  }
+
+  Widget _buildSingleTab(String title, int index) {
+    bool isActive = _activeFeedTab == index;
+    return GestureDetector(
+      onTap: () => _onFeedTabTapped(index),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Color(0xFF993B3B) : Colors.transparent,
+          border: Border.all(color: isActive ? Color(0xFF993B3B) : Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.black54,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeedContent() {
+    if (_isFeedLoading) {
+      // Tampilkan Skeleton saat tab pindah
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(
+          width: double.infinity,
+          height: 150,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      );
+    } else {
+
+      String tabName = _activeFeedTab == 0 ? "For You" : "Following";
+      return Column(
+        children: [
+          Icon(Icons.feed_outlined, size: 60, color: Colors.grey.shade300),
+          SizedBox(height: 15),
+          Text(
+            "There are no posts in $tabName yet.",
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildCustomLoadingDots() {
@@ -354,27 +400,9 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             SizedBox(height: 20),
-            Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)))),
+            Expanded(child: Container(height: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)))),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class MoodPage extends StatelessWidget {
-  final String moodName;
-  final Color color;
-
-  const MoodPage({Key? key, required this.moodName, required this.color}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(moodName),
-        backgroundColor: color,
-        foregroundColor: Colors.white,
       ),
     );
   }
