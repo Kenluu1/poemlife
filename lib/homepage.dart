@@ -4,11 +4,9 @@ import 'searchpage.dart';
 import 'notificationpage.dart';
 import 'profilepage.dart';
 import 'addpage.dart';
-
-
-// import 'sadness_page.dart';
-// import 'happiness_page.dart';
-// import 'anger_page.dart';
+import 'sadnesspage.dart';
+import 'happinesspage.dart';
+import 'angrypage.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -31,8 +29,7 @@ class _HomePageState extends State<HomePage> {
   bool _isInitialLoading = true;
   bool _isRefreshing = false;
 
-
-  int _activeFeedTab = 0; // 0 = For You, 1 = Following
+  int _activeFeedTab = 0;
   bool _isFeedLoading = false;
 
   ScrollController _scrollController = ScrollController();
@@ -75,7 +72,6 @@ class _HomePageState extends State<HomePage> {
       setState(() => _isRefreshing = false);
     }
   }
-
 
   void _onFeedTabTapped(int index) async {
     if (_activeFeedTab == index) return;
@@ -203,7 +199,7 @@ class _HomePageState extends State<HomePage> {
 
           _buildHeader(),
           SizedBox(height: 20),
-           _buildMoodCarousel(),
+          _buildMoodCarousel(),
           SizedBox(height: 20),
           _buildTabs(),
           SizedBox(height: 30),
@@ -219,7 +215,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Hi, Thomas.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text("Hi, Kenluu.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         SizedBox(height: 5),
         Text("What do you feel today ?", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ],
@@ -233,16 +229,15 @@ class _HomePageState extends State<HomePage> {
         scrollDirection: Axis.horizontal,
         children: [
           _buildMoodCard("Sadness", Color(0xFF67A3D9), 'assets/Sad.png', () {
-
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => const SadnessPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SadnessPage()));
           }),
+
           _buildMoodCard("Happiness", Color(0xFFF29C38), 'assets/Happy.png', () {
-
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => const HappinessPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const HappinessPage()));
           }),
-          _buildMoodCard("Anger", Color(0xFFE57373), 'assets/anger.png', () {
 
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => const AngerPage()));
+          _buildMoodCard("Angry", Color(0xFFE57373), 'assets/angry.png', () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AngryPage()));
           }),
         ],
       ),
@@ -289,7 +284,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
   Widget _buildTabs() {
     return Row(
       children: [
@@ -326,7 +320,6 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildFeedContent() {
     if (_isFeedLoading) {
-      // Tampilkan Skeleton saat tab pindah
       return Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
@@ -340,7 +333,6 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     } else {
-
       String tabName = _activeFeedTab == 0 ? "For You" : "Following";
       return Column(
         children: [

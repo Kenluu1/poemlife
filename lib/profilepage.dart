@@ -58,16 +58,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================================================
-  // HEADER: COVER PHOTO, APP BAR, DAN FOTO PROFIL OVERLAP
-  // =========================================================
+
   Widget _buildHeaderAndCover() {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Background Cover Photo (Banner)
         Container(
-          height: 140, // <--- TINGGI SUDAH DIPERKECIL AGAR TIDAK KEBESARAN
+          height: 140, //
           width: double.infinity,
           decoration: BoxDecoration(
             color: skeletonGrey,
@@ -78,7 +75,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
 
-        // App Bar Items (Logo Kiri & Ikon Kanan)
+
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
@@ -86,7 +83,6 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo Binus
                 Image.network(
                   'https://upload.wikimedia.org/wikipedia/id/6/6f/Binus_University_Logo.svg.png',
                   height: 40,
@@ -94,15 +90,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   errorBuilder: (context, error, stackTrace) => const SizedBox(width: 80),
                 ),
 
-                // Tombol di Kanan
+
                 Row(
                   children: [
-                    // Tombol Bookmark -> Ke Favourite Page
                     _buildCircularIcon(Icons.bookmark_border, () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => FavouritePage()));
                     }),
                     const SizedBox(width: 10),
-                    // Tombol Menu Garis Tiga
+
                     _buildCircularMenu(),
                   ],
                 ),
@@ -111,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
 
-        // Foto Profil Overlap
+
         Positioned(
           bottom: -40,
           left: 20,
@@ -160,7 +155,6 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(8),
         constraints: const BoxConstraints(),
         onSelected: (value) {
-          // Navigasi Pindah Halaman dari Menu
           if (value == 'settings') {
             Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
           } else if (value == 'favourites') {
@@ -175,9 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================================================
-  // WIDGET KONTEN PROFIL PENUH
-  // =========================================================
+
   Widget _buildProfileContent() {
     return MediaQuery.removePadding(
       context: context,
@@ -204,7 +196,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("David Done", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text("Kenluu", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const Text(
             "Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.",

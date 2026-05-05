@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'previewpage.dart';
 
 class AddPage extends StatefulWidget {
   const AddPage({Key? key}) : super(key: key);
@@ -10,54 +11,159 @@ class AddPage extends StatefulWidget {
 class _AddPageState extends State<AddPage> {
   final Color maroon = const Color(0xFFA33B3B);
 
-  bool _isLoading = true;
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+
+  bool _isInitialLoading = true;
+  bool _isNextLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Simulasi loading animasi titik selama 1.5 detik
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isInitialLoading = false;
         });
       }
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
+
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context), // Kembali ke Home (Nav Bar muncul lagi)
-        ),
-        actions: [
-          Icon(Icons.skip_previous_outlined, color: Colors.grey.shade600),
-          const SizedBox(width: 10),
-          Icon(Icons.pause_circle_outline, color: Colors.grey.shade600),
-          const SizedBox(width: 10),
-          Icon(Icons.skip_next_outlined, color: Colors.grey.shade600),
-          const SizedBox(width: 15),
-          TextButton(
-            onPressed: () {
-
-            },
-            child: const Text(
-              "Next",
-              style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 24.0, bottom: 16.0, left: 16.0, right: 16.0),
+              child: Column(
+                children: const [
+                  Text(
+                    "Save a draft ?",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "If you don't save now, all changes\nwill be lost.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.black87, fontSize: 14),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-        ],
+            const Divider(height: 1, color: Colors.grey),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true);
+                  Navigator.pop(context);
+                },
+                child: const Text("Save", style: TextStyle(color: Colors.black, fontSize: 16)),
+              ),
+            ),
+            const Divider(height: 1, color: Colors.grey),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true);
+                  Navigator.pop(context);
+                },
+                child: const Text("Don't Save", style: TextStyle(color: Colors.red, fontSize: 16)),
+              ),
+            ),
+            const Divider(height: 1, color: Colors.grey),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: _isLoading ? _buildLoading() : _buildEditor(),
+    ) ?? false;
+  }
 
-      bottomNavigationBar: _isLoading ? null : _buildBottomToolbar(),
+
+  void _onNextPressed() async {
+    setState(() {
+      _isNextLoading = true;
+    });
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
+      setState(() {
+        _isNextLoading = false;
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PreviewPage(
+            title: _titleController.text.isEmpty ? "Your Wounds" : _titleController.text,
+            content: _contentController.text.isEmpty
+                ? "Time doesn't heal wounds\nto make you forget.\n\nIt doesn't heal wounds to\nerase the memories."
+                : _contentController.text,
+          ),
+        ),
+      );
+    }
+  }
+
+  bool get _showLoading => _isInitialLoading || _isNextLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black87),
+            onPressed: () => _onWillPop(),
+          ),
+          actions: [
+            Icon(Icons.skip_previous_outlined, color: Colors.grey.shade600),
+            const SizedBox(width: 10),
+            Icon(Icons.pause_circle_outline, color: Colors.grey.shade600),
+            const SizedBox(width: 10),
+            Icon(Icons.skip_next_outlined, color: Colors.grey.shade600),
+            const SizedBox(width: 15),
+            TextButton(
+              onPressed: _showLoading ? null : _onNextPressed,
+              child: Text(
+                "Next",
+                style: TextStyle(
+                    color: _showLoading ? Colors.grey : Colors.black54,
+                    fontWeight: FontWeight.bold
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+        ),
+        body: _showLoading ? _buildLoading() : _buildEditor(),
+        bottomNavigationBar: _showLoading ? null : _buildBottomToolbar(),
+      ),
     );
   }
 
@@ -74,14 +180,13 @@ class _AddPageState extends State<AddPage> {
     );
   }
 
-
   Widget _buildEditor() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 10.0),
       child: Column(
         children: [
-
           TextField(
+            controller: _titleController,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -89,24 +194,22 @@ class _AddPageState extends State<AddPage> {
               fontFamily: 'Serif',
             ),
             decoration: InputDecoration(
-              hintText: "The Tittle",
+              hintText: "The Title",
               hintStyle: TextStyle(color: maroon.withOpacity(0.5)),
               border: InputBorder.none,
             ),
           ),
-
           const SizedBox(height: 10),
-
-
           Expanded(
             child: TextField(
+              controller: _contentController,
               maxLines: null,
               keyboardType: TextInputType.multiline,
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.black87,
                 fontFamily: 'Serif',
-                height: 1.5, // Jarak antar baris (Line height)
+                height: 1.5,
               ),
               decoration: InputDecoration(
                 hintText: "Write what you feel.",
