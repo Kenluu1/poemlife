@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/homepage.dart';
-import 'signup.dart';
+import 'package:poemlife/signup.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -213,7 +213,7 @@ class _SignInPageState extends State<SignInPage> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => const Signup()),
+                        MaterialPageRoute(builder: (context) => const SignUpPage()),
                       );
                     },
                     child: Text(

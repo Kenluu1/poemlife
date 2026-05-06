@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:poemlife/draftpage.dart';
+import 'package:poemlife/favouritepage.dart';
+import 'package:poemlife/settingpage.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -94,7 +97,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   children: [
                     _buildCircularIcon(Icons.bookmark_border, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => FavouritePage()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => DraftPage()));
                     }),
                     const SizedBox(width: 10),
 
@@ -118,7 +121,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             child: CircleAvatar(
               radius: 40,
-              backgroundImage: const AssetImage('assets/david_done.png'),
+              backgroundImage: const AssetImage('assets.png'),
               backgroundColor: skeletonGrey,
             ),
           ),
@@ -158,7 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
           if (value == 'settings') {
             Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
           } else if (value == 'favourites') {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => FavouritePage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => FavoritePage()));
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry>[
@@ -302,7 +305,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 title: const Text("Draft", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 trailing: Text("See all", style: TextStyle(color: maroon, fontSize: 12, fontWeight: FontWeight.bold)),
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => DraftPage()));
+                  // Navigator.push(context, MaterialPageRoute(builder: (context) => DraftPage()));
                 },
               ),
             ),
@@ -320,9 +323,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================================================
-  // SKELETON LOADING PENUH HALAMAN (RATA KIRI)
-  // =========================================================
   Widget _buildPageSkeleton() {
     return MediaQuery.removePadding(
       context: context,
@@ -393,70 +393,6 @@ class _ProfilePageState extends State<ProfilePage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-    );
-  }
-}
-
-// =========================================================
-// HALAMAN-HALAMAN BARU (DRAFT, SETTINGS, FAVOURITE)
-// =========================================================
-
-class DraftPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Drafts", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: const Center(
-        child: Text(
-          "Halaman Draft Masih Kosong",
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
-      ),
-    );
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: const Center(
-        child: Text(
-          "Halaman Settings",
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
-      ),
-    );
-  }
-}
-
-class FavouritePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Favourite Page", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: const Center(
-        child: Text(
-          "Halaman Favourite Masih Kosong",
-          style: TextStyle(fontSize: 18, color: Colors.grey),
         ),
       ),
     );

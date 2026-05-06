@@ -66,7 +66,6 @@ class _AngryPageState extends State<AngryPage> {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        // Header Image Angry
         Container(
           height: 180,
           width: double.infinity,
