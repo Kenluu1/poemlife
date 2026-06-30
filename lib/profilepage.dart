@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:poemlife/draftpage.dart';
 import 'package:poemlife/favouritepage.dart';
 import 'package:poemlife/settingpage.dart';
+import 'package:poemlife/detailpage.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:poemlife/API.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -19,14 +23,85 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isTabLoading = false;
   int _activeTabIndex = 0;
 
+  int? _userId;
+  String _username = 'User';
+  String _fullname = '';
+  String _bio = 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
+  String _avatar = '';
+  int _followers = 0;
+  int _following = 0;
+  List<dynamic> _tabPoems = [];
+
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+    ApiService.followEvents.addListener(_onFollowEvent);
   }
 
+  void _onFollowEvent() {
+    if (mounted) {
+      _loadInitialData();
+    }
+  }
+
+  @override
+  void dispose() {
+    ApiService.followEvents.removeListener(_onFollowEvent);
+    super.dispose();
+  }
+
+  Future<void> _fetchTabPoems(int index) async {
+    List<dynamic> fetched = [];
+    if (index == 0) {
+      fetched = await ApiService().getPoems(type: 'user');
+    } else if (index == 1) {
+      fetched = await ApiService().getPoems(type: 'draft');
+    } else if (index == 2) {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('shared_empathy_poems') ?? [];
+      fetched = list.map((item) {
+        try {
+          return jsonDecode(item);
+        } catch (_) {
+          return null;
+        }
+      }).where((p) => p != null).toList();
+    }
+    if (mounted) {
+      setState(() {
+        _tabPoems = fetched;
+      });
+    }
+  }
+
+  int _empathyCount = 0;
+
   Future<void> _loadInitialData() async {
-    await Future.delayed(const Duration(seconds: 2));
+    final prefs = await SharedPreferences.getInstance();
+    final savedUserId = prefs.getInt('userId');
+    _userId = savedUserId;
+
+    final empathyList = prefs.getStringList('shared_empathy_poems') ?? [];
+    _empathyCount = empathyList.length;
+
+    if (savedUserId != null) {
+      final profile = await ApiService().getUserProfile(savedUserId);
+      await _fetchTabPoems(_activeTabIndex);
+      if (profile != null && mounted) {
+        setState(() {
+          _username = profile['username'] ?? 'User';
+          _fullname = profile['fullname'] ?? '';
+          _bio = profile['bio'] ?? 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
+          _avatar = profile['image'] ?? '';
+          _followers = profile['followers'] ?? 0;
+          _following = profile['following'] ?? 0;
+          _isInitialLoading = false;
+        });
+        return;
+      }
+    }
+
     if (mounted) {
       setState(() {
         _isInitialLoading = false;
@@ -42,7 +117,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _activeTabIndex = index;
     });
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await _fetchTabPoems(index);
 
     if (mounted) {
       setState(() {
@@ -121,8 +196,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             child: CircleAvatar(
               radius: 40,
-              backgroundImage: const AssetImage('assets.png'),
+              backgroundImage: _avatar.isNotEmpty ? NetworkImage(_avatar) : null,
               backgroundColor: skeletonGrey,
+              child: _avatar.isEmpty ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
             ),
           ),
         ),
@@ -159,9 +235,11 @@ class _ProfilePageState extends State<ProfilePage> {
         constraints: const BoxConstraints(),
         onSelected: (value) {
           if (value == 'settings') {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage())).then((_) {
+              _loadInitialData();
+            });
           } else if (value == 'favourites') {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => FavoritePage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritePage()));
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry>[
@@ -199,12 +277,12 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Kenluu", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(_fullname.isNotEmpty ? _fullname : _username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text(
-            "Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.",
+          Text(
+            _bio,
             textAlign: TextAlign.left,
-            style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
+            style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
           ),
         ],
       ),
@@ -217,9 +295,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem("0", "Followers"),
-          _buildStatItem("0", "Following"),
-          _buildStatItem("0", "Empathy"),
+          _buildStatItem(_followers.toString(), "Followers"),
+          _buildStatItem(_following.toString(), "Following"),
+          _buildStatItem(_empathyCount.toString(), "Empathy"),
         ],
       ),
     );
@@ -279,9 +357,234 @@ class _ProfilePageState extends State<ProfilePage> {
         highlightColor: Colors.grey.shade100,
         child: _buildTabSkeleton(),
       );
-    } else {
+    }
+
+    if (_tabPoems.isEmpty) {
       return _buildEmptyState();
     }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          if (_activeTabIndex == 0) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 25),
+              decoration: BoxDecoration(
+                border: Border.all(color: maroon.withOpacity(0.5)),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ListTile(
+                title: const Text("Draft", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                trailing: Text("See all", style: TextStyle(color: maroon, fontSize: 12, fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DraftPage()));
+                },
+              ),
+            ),
+          ],
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _tabPoems.length,
+            itemBuilder: (context, index) {
+              final poem = _tabPoems[index] as Map<String, dynamic>;
+              return _buildProfilePoemCard(poem);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfilePoemCard(Map<String, dynamic> poem) {
+    final title = poem['title'] ?? 'Untitled';
+    final content = poem['content'] ?? '';
+    final author = poem['author'] ?? 'Anonymous';
+    final String avatarUrl = (poem['authorImage'] != null && poem['authorImage'].toString().isNotEmpty)
+        ? poem['authorImage'].toString()
+        : 'https://i.pravatar.cc/150?img=10';
+
+    String dateStr = 'Just now';
+    if (poem['date_created'] != null) {
+      try {
+        final date = DateTime.parse(poem['date_created']);
+        dateStr = "${date.day}/${date.month}/${date.year}";
+      } catch (_) {}
+    }
+
+    final cardAuthor = (_activeTabIndex == 2) ? author : _username;
+    final String cardAvatar = (_activeTabIndex == 2)
+        ? avatarUrl
+        : (_avatar.isNotEmpty ? _avatar : 'https://i.pravatar.cc/150?img=10');
+
+    final isBookmarked = poem['is_bookmarked'] == 1;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red[200]!, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          )
+        ]
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage: NetworkImage(cardAvatar),
+                backgroundColor: Colors.grey.shade200,
+                onBackgroundImageError: (_, __) {},
+                child: const Icon(Icons.person, size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(cardAuthor, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text(dateStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
+          const SizedBox(height: 12),
+          Text(
+            content,
+            textAlign: TextAlign.center,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.grey[800],
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailPage(
+                    poem: poem,
+                  ),
+                ),
+              );
+              _loadInitialData();
+            },
+            child: Text(
+              "Read More",
+              style: TextStyle(
+                color: maroon,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  const Text("1k", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () async {
+                      final bool currentlyLiked = poem['is_liked'] == true;
+                      setState(() {
+                        poem['is_liked'] = !currentlyLiked;
+                        int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                        if (poem['is_liked']) {
+                          poem['love_count'] = currentCount + 1;
+                        } else {
+                          poem['love_count'] = currentCount - 1;
+                        }
+                      });
+                      bool success = await ApiService().toggleReaction(poem['id'], 1);
+                      if (!success) {
+                        setState(() {
+                          poem['is_liked'] = currentlyLiked;
+                          int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                          if (poem['is_liked']) {
+                            poem['love_count'] = currentCount + 1;
+                          } else {
+                            poem['love_count'] = currentCount - 1;
+                          }
+                        });
+                      }
+                    },
+                    child: Icon(
+                      poem['is_liked'] == true ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: poem['is_liked'] == true ? maroon : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    (poem['love_count'] ?? '0').toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    (poem['comment_count'] ?? '0').toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  size: 20,
+                  color: isBookmarked ? maroon : Colors.grey,
+                ),
+                onPressed: () async {
+                  final bool nextState = !isBookmarked;
+                  setState(() {
+                    poem['is_bookmarked'] = nextState ? 1 : 0;
+                  });
+
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        nextState ? "added to favourite page" : "remove from favourite",
+                      ),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                  bool success = await ApiService().toggleBookmark(poem['id'], isBookmarked);
+                  if (!success) {
+                    setState(() {
+                      poem['is_bookmarked'] = isBookmarked ? 1 : 0;
+                    });
+                  }
+                  _loadInitialData();
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -305,7 +608,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 title: const Text("Draft", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 trailing: Text("See all", style: TextStyle(color: maroon, fontSize: 12, fontWeight: FontWeight.bold)),
                 onTap: () {
-                  // Navigator.push(context, MaterialPageRoute(builder: (context) => DraftPage()));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DraftPage()));
                 },
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/signin.dart';
+import 'package:poemlife/API.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -13,6 +14,24 @@ class _SignUpPageState extends State<SignUpPage> {
   final Color labelColor = const Color(0xFFB57B7B);
 
   bool _obscurePassword = true;
+
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nimController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _nimController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +55,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
 
               const SizedBox(height: 30),
-
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -64,27 +82,31 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                           const SizedBox(height: 30),
 
+
                           _buildCustomTextField(
                             label: "Username",
                             hint: "Name",
+                            controller: _usernameController,
                           ),
                           _buildCustomTextField(
                             label: "Email",
                             hint: "email@gmail.com",
+                            controller: _emailController,
                           ),
                           _buildCustomTextField(
                             label: "Student ID",
                             hint: "2702273510",
+                            controller: _nimController,
                           ),
                           _buildCustomTextField(
-                            label: "password",
-                            hint: "a",
+                            label: "Password",
+                            hint: "Masukkan password",
                             isPassword: true,
+                            controller: _passwordController,
                           ),
                         ],
                       ),
                     ),
-
 
                     Positioned(
                       bottom: 0,
@@ -92,8 +114,51 @@ class _SignUpPageState extends State<SignUpPage> {
                         width: 180,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            //signup
+                          onPressed: _isLoading
+                              ? null
+                              : () async {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            bool isSuccess = await AuthService().registerUser(
+                              _usernameController.text,
+                              _passwordController.text,
+                              _nimController.text,
+                              _emailController.text,
+                            );
+
+
+                            setState(() {
+                              _isLoading = false;
+                            });
+
+                            if (isSuccess) {
+                              if (context.mounted) {
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Registrasi sukses! Silakan Sign In.'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const SignInPage()),
+                                );
+                              }
+                            } else {
+                              if (context.mounted) {
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Registrasi gagal. Coba lagi.'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: maroon,
@@ -102,7 +167,17 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
+
+                          child: _isLoading
+                              ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                              : const Text(
                             "Sign Up",
                             style: TextStyle(
                               color: Colors.white,
@@ -119,7 +194,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
               const SizedBox(height: 30),
 
-             
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -129,7 +203,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const SignInPage()));
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignInPage())
+                      );
                     },
                     child: Text(
                       "Sign In",
@@ -156,11 +233,16 @@ class _SignUpPageState extends State<SignUpPage> {
     required String label,
     required String hint,
     bool isPassword = false,
+    required TextEditingController controller,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: TextField(
+        controller: controller,
         obscureText: isPassword && _obscurePassword,
+        keyboardType: isPassword ? TextInputType.text : TextInputType.emailAddress,
+        autocorrect: false,
+        enableSuggestions: false,
         style: const TextStyle(fontSize: 15, color: Colors.black87),
         decoration: InputDecoration(
           labelText: label,

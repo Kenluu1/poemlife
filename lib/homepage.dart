@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:poemlife/API.dart';
 import 'searchpage.dart';
 import 'notificationpage.dart';
 import 'profilepage.dart';
@@ -7,6 +9,8 @@ import 'addpage.dart';
 import 'sadnesspage.dart';
 import 'happinesspage.dart';
 import 'angrypage.dart';
+import 'detailpage.dart';
+import 'package:poemlife/otheruserprofile.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -34,6 +38,13 @@ class _HomePageState extends State<HomePage> {
 
   ScrollController _scrollController = ScrollController();
 
+  int? _currentUserId;
+  String _currentUsername = 'User';
+  List<dynamic> _poems = [];
+
+  bool _showPostingBanner = false;
+  String _postingStatus = 'loading';
+
   @override
   void initState() {
     super.initState();
@@ -56,20 +67,88 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _startPostingPoem(Map<String, dynamic> payload) async {
+    setState(() {
+      _showPostingBanner = true;
+      _postingStatus = 'loading';
+    });
+
+    bool success = await ApiService().createPoem(
+      title: payload['title'],
+      content: payload['content'],
+      categoryId: payload['categoryId'],
+      published: payload['published'],
+    );
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          _postingStatus = 'success';
+          _isInitialLoading = true;
+          _profileKey++; // Force profile page to recreate and fetch fresh data
+        });
+        _loadInitialData();
+
+        // Auto-dismiss banner after 4 seconds
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) {
+            setState(() {
+              _showPostingBanner = false;
+            });
+          }
+        });
+      } else {
+        setState(() {
+          _showPostingBanner = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memposting puisi. Silakan coba lagi.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<List<dynamic>> _filterBlockedAndReported(List<dynamic> fetchedPoems) async {
+    final prefs = await SharedPreferences.getInstance();
+    final blockedUsers = prefs.getStringList('blocked_users') ?? [];
+    final reportedPoems = prefs.getStringList('reported_poems') ?? [];
+
+    return fetchedPoems.where((p) {
+      final String author = p['author'] ?? '';
+      final String idStr = (p['id'] ?? '').toString();
+      return !blockedUsers.contains(author) && !reportedPoems.contains(idStr);
+    }).toList();
+  }
+
   Future<void> _loadInitialData() async {
-    await Future.delayed(Duration(seconds: 2));
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('username') ?? 'User';
+    _currentUserId = prefs.getInt('userId');
+    final fetchedPoems = await ApiService().getPoems(type: _activeFeedTab == 0 ? 'all' : 'popular');
+    final filtered = await _filterBlockedAndReported(fetchedPoems);
+
     if (mounted) {
       setState(() {
+        _currentUsername = savedUsername;
+        _poems = filtered;
         _isInitialLoading = false;
+        _isFeedLoading = false;
       });
     }
   }
 
   Future<void> _handleRefresh() async {
     setState(() => _isRefreshing = true);
-    await Future.delayed(Duration(seconds: 2));
+    final fetchedPoems = await ApiService().getPoems(type: _activeFeedTab == 0 ? 'all' : 'popular');
+    final filtered = await _filterBlockedAndReported(fetchedPoems);
     if (mounted) {
-      setState(() => _isRefreshing = false);
+      setState(() {
+        _poems = filtered;
+        _isRefreshing = false;
+      });
     }
   }
 
@@ -81,10 +160,12 @@ class _HomePageState extends State<HomePage> {
       _isFeedLoading = true;
     });
 
-    await Future.delayed(Duration(milliseconds: 1000));
+    final fetchedPoems = await ApiService().getPoems(type: index == 0 ? 'all' : 'popular');
+    final filtered = await _filterBlockedAndReported(fetchedPoems);
 
     if (mounted) {
       setState(() {
+        _poems = filtered;
         _isFeedLoading = false;
       });
     }
@@ -95,31 +176,124 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBody: true,
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          if (index == 0 && _currentIndex != 0) {
-            setState(() { _isInitialLoading = true; });
-            _loadInitialData();
-          } else if (index == 1 && _currentIndex != 1) {
-            setState(() { _searchKey++; });
-          } else if (index == 2 && _currentIndex != 2) {
-            setState(() { _notificationKey++; });
-          } else if (index == 3 && _currentIndex != 3) {
-            setState(() { _profileKey++; });
-          }
-
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+      body: Stack(
         children: [
-          SafeArea(
-            child: _isInitialLoading ? _buildSkeleton() : _buildMainContent(),
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              if (index == 0 && _currentIndex != 0) {
+                setState(() { _isInitialLoading = true; });
+                _loadInitialData();
+              } else if (index == 1 && _currentIndex != 1) {
+                setState(() { _searchKey++; });
+              } else if (index == 2 && _currentIndex != 2) {
+                setState(() { _notificationKey++; });
+              } else if (index == 3 && _currentIndex != 3) {
+                setState(() { _profileKey++; });
+              }
+
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            children: [
+              SafeArea(
+                child: _isInitialLoading ? _buildSkeleton() : _buildMainContent(),
+              ),
+              SearchPage(key: ValueKey('search_$_searchKey')),
+              NotificationPage(key: ValueKey('notif_$_notificationKey')),
+              ProfilePage(key: ValueKey('profile_$_profileKey')),
+            ],
           ),
-          SearchPage(key: ValueKey('search_$_searchKey')),
-          NotificationPage(key: ValueKey('notif_$_notificationKey')),
-          ProfilePage(key: ValueKey('profile_$_profileKey')),
+          if (_showPostingBanner)
+            Positioned(
+              bottom: 95,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF993B3B),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    if (_postingStatus == 'loading') ...[
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF29C38),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        "Posting...",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ] else if (_postingStatus == 'success') ...[
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        "Posted",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showPostingBanner = false;
+                          });
+                          _onNavTapped(3); // Switch to Profile Page tab
+                        },
+                        child: const Text(
+                          "View",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -133,8 +307,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildInteractiveBottomNav() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20),
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -143,7 +317,7 @@ class _HomePageState extends State<HomePage> {
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -154,10 +328,13 @@ class _HomePageState extends State<HomePage> {
           _buildNavItem(icon: Icons.search, index: 1),
 
           GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPage()));
+            onTap: () async {
+              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPage()));
+              if (result != null && result is Map<String, dynamic>) {
+                _startPostingPoem(result);
+              }
             },
-            child: CircleAvatar(
+            child: const CircleAvatar(
               backgroundColor: Color(0xFF993B3B),
               child: Icon(Icons.add, color: Colors.white),
             ),
@@ -215,7 +392,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Hi, Kenluu.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text("Hi, $_currentUsername.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         SizedBox(height: 5),
         Text("What do you feel today ?", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ],
@@ -318,21 +495,244 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildPoemCard(Map<String, dynamic> poem) {
+    final title = poem['title'] ?? 'Untitled';
+    final author = poem['author'] ?? 'Anonymous';
+    final isBookmarked = poem['is_bookmarked'] == 1;
+    final String avatarUrl = (poem['authorImage'] != null && poem['authorImage'].toString().isNotEmpty)
+        ? poem['authorImage'].toString()
+        : 'https://i.pravatar.cc/150?img=10';
+    
+    String dateStr = 'Just now';
+    if (poem['date_created'] != null) {
+      try {
+        final date = DateTime.parse(poem['date_created']);
+        dateStr = "${date.day}/${date.month}/${date.year}";
+      } catch (_) {}
+    }
+
+    final rawContent = poem['content'] ?? '';
+    final lines = rawContent.split('\n');
+    final contentSnippet = lines.take(4).join('\n');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade100, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          )
+        ]
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () async {
+              if (poem['authorId'] != null && poem['authorId'] != _currentUserId) {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OtherUserProfile(
+                      userId: poem['authorId'],
+                      username: author,
+                    ),
+                  ),
+                );
+                if (result == 'reload') {
+                  _loadInitialData();
+                }
+              }
+            },
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundImage: NetworkImage(avatarUrl),
+                  backgroundColor: Colors.grey.shade200,
+                  onBackgroundImageError: (_, __) {},
+                  child: const Icon(Icons.person, size: 20, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(author, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(dateStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
+          const SizedBox(height: 12),
+          Text(
+            contentSnippet,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[800],
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailPage(
+                    poem: poem,
+                  ),
+                ),
+              );
+              if (result != null && result is Map<String, dynamic> && mounted) {
+                if (result['action'] == 'reload') {
+                  _loadInitialData();
+                } else {
+                  setState(() {
+                    poem['is_liked'] = result['is_liked'];
+                    poem['love_count'] = result['love_count'];
+                    poem['is_bookmarked'] = result['is_bookmarked'];
+                    poem['comment_count'] = result['comment_count'];
+                  });
+                }
+              }
+            },
+            child: const Text(
+              "Read More",
+              style: TextStyle(
+                color: Color(0xFF993B3B),
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () async {
+                      final bool currentlyLiked = poem['is_liked'] == true;
+                      setState(() {
+                        poem['is_liked'] = !currentlyLiked;
+                        int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                        if (poem['is_liked']) {
+                          poem['love_count'] = currentCount + 1;
+                        } else {
+                          poem['love_count'] = currentCount - 1;
+                        }
+                      });
+                      bool success = await ApiService().toggleReaction(poem['id'], 1);
+                      if (!success) {
+                        setState(() {
+                          poem['is_liked'] = currentlyLiked;
+                          int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                          if (poem['is_liked']) {
+                            poem['love_count'] = currentCount + 1;
+                          } else {
+                            poem['love_count'] = currentCount - 1;
+                          }
+                        });
+                      }
+                    },
+                    child: Icon(
+                      poem['is_liked'] == true ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: poem['is_liked'] == true ? const Color(0xFF993B3B) : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    (poem['love_count'] ?? '0').toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    (poem['comment_count'] ?? '0').toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  size: 20,
+                  color: isBookmarked ? const Color(0xFF993B3B) : Colors.grey,
+                ),
+                onPressed: () async {
+                  final bool nextState = !isBookmarked;
+                  setState(() {
+                    poem['is_bookmarked'] = nextState ? 1 : 0;
+                  });
+
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        nextState ? "added to favourite page" : "remove from favourite",
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      backgroundColor: const Color(0xFF993B3B),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  );
+
+                  bool success = await ApiService().toggleBookmark(poem['id'], isBookmarked);
+                  if (!success) {
+                    setState(() {
+                      poem['is_bookmarked'] = isBookmarked ? 1 : 0;
+                    });
+                  }
+                },
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _buildFeedContent() {
     if (_isFeedLoading) {
       return Shimmer.fromColors(
         baseColor: Colors.grey.shade300,
         highlightColor: Colors.grey.shade100,
-        child: Container(
-          width: double.infinity,
-          height: 150,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+        child: ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 3,
+          itemBuilder: (context, index) => Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            height: 150,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
         ),
       );
-    } else {
+    } else if (_poems.isEmpty) {
       String tabName = _activeFeedTab == 0 ? "For You" : "Following";
       return Column(
         children: [
@@ -343,6 +743,16 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(color: Colors.grey),
           ),
         ],
+      );
+    } else {
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _poems.length,
+        itemBuilder: (context, index) {
+          final poem = _poems[index] as Map<String, dynamic>;
+          return _buildPoemCard(poem);
+        },
       );
     }
   }

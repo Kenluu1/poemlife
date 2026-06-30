@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BlockedPage extends StatefulWidget {
   const BlockedPage({Key? key}) : super(key: key);
@@ -12,46 +13,43 @@ class _BlockedPageState extends State<BlockedPage> {
   final Color orange = const Color(0xFFF29C38);
 
   bool _isLoading = true;
+  List<String> _blockedUsers = [];
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    _loadBlockedUsers();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    setState(() {
+      _isLoading = true;
     });
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _blockedUsers = prefs.getStringList('blocked_users') ?? [];
+        _isLoading = false;
+      });
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _isLoading
-          ? null
-          : AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Blocked",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoading ? _buildLoadingView() : _buildEmptyStateView(),
-    );
-  }
+  Future<void> _unblockUser(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> list = prefs.getStringList('blocked_users') ?? [];
+    list.remove(username);
+    await prefs.setStringList('blocked_users', list);
 
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$username unblocked successfully"),
+          backgroundColor: maroon,
+        ),
+      );
+      _loadBlockedUsers();
+    }
+  }
 
   Widget _buildLoadingView() {
     return Center(
@@ -74,7 +72,6 @@ class _BlockedPageState extends State<BlockedPage> {
     );
   }
 
-
   Widget _buildEmptyStateView() {
     return Center(
       child: Padding(
@@ -89,7 +86,7 @@ class _BlockedPageState extends State<BlockedPage> {
                 height: 180,
                 width: 250,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Center(
@@ -98,7 +95,6 @@ class _BlockedPageState extends State<BlockedPage> {
               ),
             ),
             const SizedBox(height: 32),
-
             const Text(
               "No accounts are blocked",
               style: TextStyle(
@@ -108,7 +104,6 @@ class _BlockedPageState extends State<BlockedPage> {
               ),
             ),
             const SizedBox(height: 8),
-
             Text(
               "This page will display the accounts you have\nblocked.",
               textAlign: TextAlign.center,
@@ -118,11 +113,98 @@ class _BlockedPageState extends State<BlockedPage> {
                 height: 1.4,
               ),
             ),
-
             const SizedBox(height: 60),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBlockedList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _blockedUsers.length,
+      itemBuilder: (context, index) {
+        final blockedUser = _blockedUsers[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.red.shade100, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.01),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey[200],
+                child: const Icon(Icons.person, color: Colors.grey, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  blockedUser,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () => _unblockUser(blockedUser),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: maroon, width: 1.2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: Text(
+                  "Unblock",
+                  style: TextStyle(color: maroon, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget body;
+    if (_isLoading) {
+      body = _buildLoadingView();
+    } else if (_blockedUsers.isEmpty) {
+      body = _buildEmptyStateView();
+    } else {
+      body = _buildBlockedList();
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Blocked",
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: body,
     );
   }
 }

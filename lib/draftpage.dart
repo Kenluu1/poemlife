@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:poemlife/API.dart';
 
 class DraftPage extends StatefulWidget {
-  const DraftPage({Key? key}) : super(key: key);
+  const DraftPage({super.key});
 
   @override
   State<DraftPage> createState() => _DraftPageState();
@@ -9,50 +10,87 @@ class DraftPage extends StatefulWidget {
 
 class _DraftPageState extends State<DraftPage> {
   bool _isLoading = true;
-
-//prototype
-  List<Map<String, String>> _drafts = [
-    {
-      "time": "2 hours ago",
-      "title": "Untitled",
-      "content": "Time doesn't heal wounds...",
-    },
-    {
-      "time": "10 Oktober 2025",
-      "title": "Your Words",
-      "content": "Time doesn't heal wounds to make you...",
-    },
-    {
-      "time": "10 April 2024",
-      "title": "Your Words",
-      "content": "No poems",
-    },
-  ];
+  List<dynamic> _drafts = [];
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+    _loadDrafts();
+  }
+
+  Future<void> _loadDrafts() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final fetchedDrafts = await ApiService().getPoems(type: 'draft');
+    if (mounted) {
+      setState(() {
+        _drafts = fetchedDrafts;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _deleteAll() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF993B3B)),
+      ),
+    );
+    bool allSuccess = true;
+    for (var draft in _drafts) {
+      final poemId = draft['id'];
+      if (poemId != null) {
+        bool success = await ApiService().deletePoem(poemId);
+        if (!success) {
+          allSuccess = false;
+        }
       }
-    });
+    }
+    if (!mounted) return;
+    Navigator.pop(context); // Hide loading
+    if (!allSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Beberapa draft gagal dihapus')),
+      );
+    }
+    _loadDrafts();
   }
 
-
-  void _deleteAll() {
-    setState(() {
-      _drafts.clear();
-    });
+  void _deleteDraft(int index) async {
+    final draft = _drafts[index];
+    final poemId = draft['id'];
+    if (poemId != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF993B3B)),
+        ),
+      );
+      bool success = await ApiService().deletePoem(poemId);
+      if (!mounted) return;
+      Navigator.pop(context); // Hide loading
+      if (success) {
+        _loadDrafts();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menghapus draft')),
+        );
+      }
+    }
   }
 
-
-  void _deleteDraft(int index) {
-    setState(() {
-      _drafts.removeAt(index);
-    });
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return "Just now";
+    try {
+      final date = DateTime.parse(dateStr);
+      return "${date.day}/${date.month}/${date.year}";
+    } catch (_) {
+      return dateStr;
+    }
   }
 
   @override
@@ -137,7 +175,7 @@ class _DraftPageState extends State<DraftPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    draft["time"]!,
+                    _formatDate(draft["date_created"]),
                     style: TextStyle(color: Colors.grey[500], fontSize: 11),
                   ),
                   GestureDetector(
@@ -152,7 +190,7 @@ class _DraftPageState extends State<DraftPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                draft["title"]!,
+                draft["title"] ?? "Untitled",
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -161,7 +199,7 @@ class _DraftPageState extends State<DraftPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                draft["content"]!,
+                draft["content"] ?? "",
                 style: TextStyle(
                   color: Colors.grey[800],
                   fontSize: 13,

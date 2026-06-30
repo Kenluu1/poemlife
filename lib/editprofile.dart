@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:poemlife/API.dart';
 
 class AppColors {
   static const Color primaryMaroon = Color(0xFF8B2B32);
@@ -21,12 +23,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _hasChanges = false;
   bool _isSavingLoading = false;
 
-
-  final String _defaultUsername = "Kenluu";
-  final String _defaultNIM = "2702273510";
-  final String _defaultEmail = "kenluu@gmail.com";
-  final String _defaultBio = "Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.";
-
+  String _loadedUsername = "";
+  String _loadedNIM = "";
+  String _loadedEmail = "";
+  String _loadedBio = "";
+  String _avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80";
 
   late TextEditingController _usernameController;
   late TextEditingController _nimController;
@@ -36,10 +37,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    _usernameController = TextEditingController(text: _defaultUsername);
-    _nimController = TextEditingController(text: _defaultNIM);
-    _emailController = TextEditingController(text: _defaultEmail);
-    _bioController = TextEditingController(text: _defaultBio);
+    _usernameController = TextEditingController();
+    _nimController = TextEditingController();
+    _emailController = TextEditingController();
+    _bioController = TextEditingController();
 
     _usernameController.addListener(_checkChanges);
     _nimController.addListener(_checkChanges);
@@ -59,7 +60,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _startInitialLoad() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
+    final prefs = await SharedPreferences.getInstance();
+    final savedUserId = prefs.getInt('userId');
+    if (savedUserId != null) {
+      final profile = await ApiService().getUserProfile(savedUserId);
+      if (profile != null && mounted) {
+        setState(() {
+          _loadedUsername = profile['username'] ?? '';
+          _loadedNIM = profile['nim'] ?? '';
+          _loadedEmail = profile['email'] ?? '';
+          _loadedBio = profile['bio'] ?? '';
+          _avatarUrl = (profile['image'] != null && profile['image'].toString().isNotEmpty)
+              ? profile['image'].toString()
+              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80';
+
+          _usernameController.text = _loadedUsername;
+          _nimController.text = _loadedNIM;
+          _emailController.text = _loadedEmail;
+          _bioController.text = _loadedBio;
+        });
+      }
+    }
     if (mounted) {
       setState(() {
         _isLoadingInitialPage = false;
@@ -69,10 +90,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _checkChanges() {
     setState(() {
-      _hasChanges = _usernameController.text != _defaultUsername ||
-          _nimController.text != _defaultNIM ||
-          _emailController.text != _defaultEmail ||
-          _bioController.text != _defaultBio;
+      _hasChanges = _usernameController.text != _loadedUsername ||
+          _nimController.text != _loadedNIM ||
+          _emailController.text != _loadedEmail ||
+          _bioController.text != _loadedBio;
     });
   }
 
@@ -149,17 +170,54 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _onSavePressed() async {
+    final usernameText = _usernameController.text.trim();
+    if (usernameText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Username cannot be empty!"),
+          backgroundColor: AppColors.accentMerah,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSavingLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    final success = await ApiService().updateUserProfile(
+      username: usernameText,
+      nim: _nimController.text.trim(),
+      email: _emailController.text.trim(),
+      bio: _bioController.text.trim(),
+    );
 
     if (mounted) {
       setState(() {
         _isSavingLoading = false;
       });
-      Navigator.pop(context);
+      if (success) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('username', _usernameController.text.trim());
+        await prefs.setString('email', _emailController.text.trim());
+        await prefs.setString('nim', _nimController.text.trim());
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Profile updated successfully!"),
+            backgroundColor: AppColors.primaryMaroon,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to update profile. Please try again."),
+            backgroundColor: AppColors.accentMerah,
+          ),
+        );
+      }
     }
   }
 
@@ -176,10 +234,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              _onWillPop().then((discard) {
-                if (discard) Navigator.pop(context);
-              });
+            onPressed: () async {
+              final nav = Navigator.of(context);
+              bool discard = await _onWillPop();
+              if (discard) {
+                nav.pop();
+              }
             },
           ),
           title: const Text(
@@ -273,10 +333,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   child: CircleAvatar(
                     radius: constraints.maxWidth * 0.15 - 4,
                     backgroundColor: Colors.grey[400],
-                    /*
-                    backgroundImage: const AssetImage('assets/profile_placeholder.png'),
-                    */
-                    child: const Icon(Icons.person, color: Colors.white, size: 40), // Hapus ini kalau pakai gambar asli
+                    backgroundImage: NetworkImage(_avatarUrl),
                   ),
                 ),
                 Positioned(
@@ -377,20 +434,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: (_hasChanges && !_isSavingLoading) ? _onSavePressed : null,
+      onPressed: !_isSavingLoading ? _onSavePressed : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: _hasChanges ? AppColors.primaryMaroon : AppColors.disabledAbu,
+        backgroundColor: AppColors.primaryMaroon,
         disabledBackgroundColor: AppColors.disabledAbu,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        elevation: _hasChanges ? 2 : 0,
+        elevation: 2,
       ),
       child: _isSavingLoading
           ? _buildDotLoadingWidget(forButton: true)
-          : Text(
+          : const Text(
         'Save',
         style: TextStyle(
-          color: _hasChanges ? Colors.white : AppColors.disabledTeksAbu,
+          color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),

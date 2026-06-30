@@ -1,14 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:poemlife/addcategoriespage.dart';
+import 'package:poemlife/publicationpage.dart';
+import 'package:poemlife/detailpreviewpage.dart';
 
-class PreviewPage extends StatelessWidget {
+class PreviewPage extends StatefulWidget {
   final String title;
   final String content;
 
   const PreviewPage({
-    Key? key,
+    super.key,
     required this.title,
     required this.content,
-  }) : super(key: key);
+  });
+
+  @override
+  State<PreviewPage> createState() => _PreviewPageState();
+}
+
+class _PreviewPageState extends State<PreviewPage> {
+  List<Map<String, dynamic>> _selectedCategories = [];
+  String _selectedPublication = "Everyone";
+  String _username = "Kenluu";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsername();
+  }
+
+  Future<void> _loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('username');
+    if (savedUsername != null && mounted) {
+      setState(() {
+        _username = savedUsername;
+      });
+    }
+  }
+
+  void _submitPoem(BuildContext context, {required int published}) {
+    // If they click Posting (published == 1) but selected "Only me", send 0 (private/draft)
+    int finalPublished = published;
+    if (published == 1 && _selectedPublication == "Only me") {
+      finalPublished = 0;
+    }
+
+    final payload = {
+      'title': widget.title,
+      'content': widget.content,
+      'categoryId': _selectedCategories.isNotEmpty ? _selectedCategories.first['id'] : 1,
+      'published': finalPublished,
+    };
+    Navigator.pop(context, payload);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,27 +102,44 @@ class PreviewPage extends StatelessWidget {
                         child: const Icon(Icons.person, size: 18, color: Colors.white),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        "Kenluu",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      Text(
+                        _username,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, fontFamily: 'serif'),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    content,
+                    widget.content,
                     textAlign: TextAlign.center,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, height: 1.6),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    "Read More",
-                    style: TextStyle(color: Colors.red[300], fontSize: 13, fontWeight: FontWeight.w500),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailPreviewPage(
+                            title: widget.title,
+                            content: widget.content,
+                            username: _username,
+                            selectedCategories: _selectedCategories,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "Read More",
+                      style: TextStyle(color: Colors.red[300], fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
                   ),
                 ],
               ),
@@ -94,9 +156,49 @@ class PreviewPage extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildSettingRow("Category", "Add category", "See all"),
+                  _buildSettingRow(
+                    "Category",
+                    _selectedCategories.isEmpty
+                        ? "Add category"
+                        : _selectedCategories.map((c) => c['name']).join(', '),
+                    "See all",
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddCategoriesPage(
+                            initialCategories: _selectedCategories,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is List<Map<String, dynamic>>) {
+                        setState(() {
+                          _selectedCategories = result;
+                        });
+                      }
+                    },
+                  ),
                   Divider(height: 1, color: Colors.red[100]),
-                  _buildSettingRow("Publication", "Select publication", "See all"),
+                  _buildSettingRow(
+                    "Publication",
+                    _selectedPublication,
+                    "See all",
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PublicationPage(
+                            initialPublication: _selectedPublication,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is String) {
+                        setState(() {
+                          _selectedPublication = result;
+                        });
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
@@ -112,10 +214,10 @@ class PreviewPage extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () => _submitPoem(context, published: 0),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderStyle.solid != null ? BorderSide(color: Colors.red[200]!, width: 1.5) : null,
+                    side: BorderSide(color: Colors.red[200]!, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   child: Row(
@@ -131,7 +233,7 @@ class PreviewPage extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _submitPoem(context, published: 1),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF993B3B), // Warna marun
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -156,23 +258,27 @@ class PreviewPage extends StatelessWidget {
   }
 
 
-  Widget _buildSettingRow(String title, String subtitle, String actionText) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            ],
-          ),
-          Text(actionText, style: const TextStyle(color: Color(0xFF993B3B), fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
+  Widget _buildSettingRow(String title, String subtitle, String actionText, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+            Text(actionText, style: const TextStyle(color: Color(0xFF993B3B), fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

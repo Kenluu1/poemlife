@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:poemlife/blockedpage.dart';
 import 'package:poemlife/editprofile.dart';
 import 'package:poemlife/languagepage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:poemlife/API.dart';
 import 'signin.dart';
-// import 'blockedpage.dart';
-// import 'languagepage.dart';
-// import 'changepasswordpage.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -19,17 +18,34 @@ class _SettingsPageState extends State<SettingsPage> {
   final Color orange = const Color(0xFFF29C38);
 
   bool _isLoading = true;
+  String _username = "User";
+  String _avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80";
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUserId = prefs.getInt('userId');
+    if (savedUserId != null) {
+      final profile = await ApiService().getUserProfile(savedUserId);
+      if (profile != null && mounted) {
         setState(() {
-          _isLoading = false;
+          _username = profile['username'] ?? 'User';
+          _avatarUrl = (profile['image'] != null && profile['image'].toString().isNotEmpty)
+              ? profile['image'].toString()
+              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80';
         });
       }
-    });
+    }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _showLogoutConfirmation() {
@@ -151,25 +167,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: Colors.grey[200],
-                  backgroundImage: const NetworkImage(
-                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80'
-                  ),
+                  backgroundImage: NetworkImage(_avatarUrl),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  "Kenluu",
-                  style: TextStyle(
+                Text(
+                  _username,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const EditProfilePage()),
                     );
+                    _loadUserProfile();
                   },
                   style: TextButton.styleFrom(
                     minimumSize: Size.zero,

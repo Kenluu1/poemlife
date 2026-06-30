@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:poemlife/API.dart';
 import 'previewpage.dart';
 
 class AddPage extends StatefulWidget {
@@ -67,9 +68,34 @@ class _AddPageState extends State<AddPage> {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: () {
-                  Navigator.pop(context, true);
-                  Navigator.pop(context);
+                onPressed: () async {
+                  Navigator.pop(context, true); // Pop dialog
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF993B3B)),
+                    ),
+                  );
+                  bool success = await ApiService().createPoem(
+                    title: _titleController.text.isEmpty ? "Untitled" : _titleController.text,
+                    content: _contentController.text.isEmpty
+                        ? "Time doesn't heal wounds..."
+                        : _contentController.text,
+                    categoryId: 1, // Default category
+                    published: 0, // 0 = draft
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context); // Pop loading
+                    Navigator.pop(context); // Pop AddPage
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success ? 'Puisi disimpan sebagai draft!' : 'Gagal menyimpan draft.'),
+                        backgroundColor: success ? Colors.green : Colors.red,
+                      ),
+                    );
+                  }
                 },
                 child: const Text("Save", style: TextStyle(color: Colors.black, fontSize: 16)),
               ),
@@ -112,7 +138,7 @@ class _AddPageState extends State<AddPage> {
         _isNextLoading = false;
       });
 
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => PreviewPage(
@@ -123,6 +149,9 @@ class _AddPageState extends State<AddPage> {
           ),
         ),
       );
+      if (result != null && result is Map<String, dynamic> && mounted) {
+        Navigator.pop(context, result);
+      }
     }
   }
 
