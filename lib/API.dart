@@ -299,7 +299,7 @@ class ApiService {
     }
   }
 
-  Future<bool> createComment(int poemId, String commentText) async {
+  Future<bool> createComment(int poemId, String commentText, {int? parentCommentId}) async {
     final url = Uri.parse('$baseUrl/comment/create');
     try {
       final headers = await _getHeaders();
@@ -309,6 +309,7 @@ class ApiService {
         body: jsonEncode({
           'poem_id': poemId,
           'comment': commentText,
+          if (parentCommentId != null) 'parent_comment_id': parentCommentId,
         }),
       );
 
@@ -391,6 +392,43 @@ class ApiService {
       return false;
     } catch (e) {
       print('Error updateUserProfile: $e');
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> getNotifications() async {
+    final url = Uri.parse('$baseUrl/notification');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      print('DEBUG getNotifications: status=${response.statusCode}, body=${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          final List<dynamic> list = responseData['data'];
+          return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error getNotifications: $e');
+      return null;
+    }
+  }
+
+  Future<bool> markNotificationsRead() async {
+    final url = Uri.parse('$baseUrl/notification/mark-read');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error markNotificationsRead: $e');
       return false;
     }
   }

@@ -74,23 +74,9 @@ class _DetailPageState extends State<DetailPage> {
     }
     final fetched = await ApiService().getComments(poemId);
 
-    // Load local replies from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final String key = 'local_replies_${poemId}';
-    final String? existingRaw = prefs.getString(key);
-    Map<String, dynamic> localRepliesMap = {};
-    if (existingRaw != null) {
-      try {
-        localRepliesMap = jsonDecode(existingRaw);
-      } catch (_) {}
-    }
-
-    if (fetched != null && fetched.isNotEmpty && mounted) {
+    if (fetched != null && mounted) {
       setState(() {
         _comments = fetched.map((c) {
-          final String commentIdStr = c['id'].toString();
-          final List<dynamic> localReplies = localRepliesMap[commentIdStr] ?? [];
-          
           final List<dynamic> apiReplies = c['replies'] ?? [];
           final List<dynamic> mappedApiReplies = apiReplies.map((r) {
             return {
@@ -104,11 +90,6 @@ class _DetailPageState extends State<DetailPage> {
                   : 'https://i.pravatar.cc/150?img=32',
             };
           }).toList();
-          
-          final Set<dynamic> allReplies = {};
-          for (var r in [...mappedApiReplies, ...localReplies]) {
-            allReplies.add(r);
-          }
 
           return {
             'id': c['id'],
@@ -119,35 +100,13 @@ class _DetailPageState extends State<DetailPage> {
             'avatar': c['author'] != null && c['author'] is Map && c['author']['image'] != null
                 ? c['author']['image'].toString()
                 : 'https://i.pravatar.cc/150?img=32',
-            'replies': allReplies.toList()
+            'replies': mappedApiReplies
           };
         }).toList();
       });
     } else if (mounted) {
       setState(() {
-        // Design fallback mock comments
-        final List<dynamic> localReplies1 = localRepliesMap['1'] ?? [];
-        _comments = [
-          {
-            'id': 1,
-            'author': 'Lauren Jarvis',
-            'authorId': 999,
-            'time': '5 hours ago',
-            'text': 'Venenatis, nisl malesuada amet mauris pharetra mi nam in egestas.',
-            'avatar': 'https://i.pravatar.cc/150?img=32',
-            'replies': [
-              {
-                'id': 101,
-                'author': 'David Done',
-                'authorId': 888,
-                'time': '5 hours ago',
-                'text': 'Venenatis, nisl malesuada amet mauris pharetra mi nam in egestas.',
-                'avatar': 'https://i.pravatar.cc/150?img=47',
-              },
-              ...localReplies1
-            ]
-          }
-        ];
+        _comments = [];
       });
     }
   }
@@ -226,20 +185,10 @@ class _DetailPageState extends State<DetailPage> {
           _replyingToComment = null;
         });
 
-        final prefs = await SharedPreferences.getInstance();
-        final String key = 'local_replies_${poemId}';
-        final String? existingRaw = prefs.getString(key);
-        Map<String, dynamic> localRepliesMap = {};
-        if (existingRaw != null) {
-          try {
-            localRepliesMap = jsonDecode(existingRaw);
-          } catch (_) {}
+        final success = await ApiService().createComment(poemId, text, parentCommentId: parentId);
+        if (success) {
+          _loadComments();
         }
-        final String parentIdStr = parentId.toString();
-        final List<dynamic> repliesList = localRepliesMap[parentIdStr] ?? [];
-        repliesList.add(newReply);
-        localRepliesMap[parentIdStr] = repliesList;
-        await prefs.setString(key, jsonEncode(localRepliesMap));
       } else {
         setState(() {
           _comments.add({
