@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'translation.dart';
 
 class BlockedPage extends StatefulWidget {
   const BlockedPage({Key? key}) : super(key: key);
@@ -43,7 +44,7 @@ class _BlockedPageState extends State<BlockedPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("$username unblocked successfully"),
+          content: Text("$username${T.s('unblocked_success')}"),
           backgroundColor: maroon,
         ),
       );
@@ -95,9 +96,9 @@ class _BlockedPageState extends State<BlockedPage> {
               ),
             ),
             const SizedBox(height: 32),
-            const Text(
-              "No accounts are blocked",
-              style: TextStyle(
+            Text(
+              T.lang == 'id' ? 'Tidak ada akun yang diblokir' : 'No accounts are blocked',
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -105,7 +106,7 @@ class _BlockedPageState extends State<BlockedPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              "This page will display the accounts you have\nblocked.",
+              T.s("no_blocked_desc"),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -163,7 +164,7 @@ class _BlockedPageState extends State<BlockedPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
                 child: Text(
-                  "Unblock",
+                  T.s("unblock"),
                   style: TextStyle(color: maroon, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ),
@@ -194,9 +195,9 @@ class _BlockedPageState extends State<BlockedPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Blocked",
-          style: TextStyle(
+        title: Text(
+          T.s("blocked"),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,

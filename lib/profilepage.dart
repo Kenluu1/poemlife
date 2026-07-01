@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:poemlife/draftpage.dart';
 import 'package:poemlife/favouritepage.dart';
@@ -7,6 +6,7 @@ import 'package:poemlife/detailpage.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
+import 'translation.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -26,6 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int? _userId;
   String _username = 'User';
   String _fullname = '';
+  String _nim = '';
   String _bio = 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
   String _avatar = '';
   int _followers = 0;
@@ -58,19 +59,25 @@ class _ProfilePageState extends State<ProfilePage> {
     } else if (index == 1) {
       fetched = await ApiService().getPoems(type: 'draft');
     } else if (index == 2) {
-      final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList('shared_empathy_poems') ?? [];
-      fetched = list.map((item) {
-        try {
-          return jsonDecode(item);
-        } catch (_) {
-          return null;
-        }
-      }).where((p) => p != null).toList();
+      fetched = await ApiService().getPoems(type: 'empathy');
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    final blockedUsers = prefs.getStringList('blocked_users') ?? [];
+    final reportedPoems = prefs.getStringList('reported_poems') ?? [];
+
+    final filtered = fetched.where((p) {
+      final String author = p['author'] ?? '';
+      final String idStr = (p['id'] ?? '').toString();
+      return !blockedUsers.contains(author) && !reportedPoems.contains(idStr);
+    }).toList();
+
     if (mounted) {
       setState(() {
-        _tabPoems = fetched;
+        _tabPoems = filtered;
+        if (index == 2) {
+          _empathyCount = filtered.length;
+        }
       });
     }
   }
@@ -82,9 +89,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final savedUserId = prefs.getInt('userId');
     _userId = savedUserId;
 
-    final empathyList = prefs.getStringList('shared_empathy_poems') ?? [];
-    _empathyCount = empathyList.length;
-
     if (savedUserId != null) {
       final profile = await ApiService().getUserProfile(savedUserId);
       await _fetchTabPoems(_activeTabIndex);
@@ -92,7 +96,9 @@ class _ProfilePageState extends State<ProfilePage> {
         setState(() {
           _username = profile['username'] ?? 'User';
           _fullname = profile['fullname'] ?? '';
+          _nim = profile['nim'] ?? '';
           _bio = profile['bio'] ?? 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
+          _empathyCount = profile['empathy'] ?? 0;
           _avatar = profile['image'] ?? '';
           _followers = profile['followers'] ?? 0;
           _following = profile['following'] ?? 0;
@@ -243,9 +249,9 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry>[
-          const PopupMenuItem(value: 'settings', child: Text('Settings')),
-          const PopupMenuItem(value: 'favourites', child: Text('Favourite Page')),
-        ],
+           PopupMenuItem(value: 'settings', child: Text(T.s('settings'))),
+           PopupMenuItem(value: 'favourites', child: Text(T.s('favourites'))),
+         ],
       ),
     );
   }
@@ -278,6 +284,13 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_fullname.isNotEmpty ? _fullname : _username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          if (_nim.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              _nim,
+              style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(
             _bio,
@@ -295,9 +308,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem(_followers.toString(), "Followers"),
-          _buildStatItem(_following.toString(), "Following"),
-          _buildStatItem(_empathyCount.toString(), "Empathy"),
+          _buildStatItem(_followers.toString(), T.s("followers")),
+          _buildStatItem(_following.toString(), T.s("following")),
+          _buildStatItem(_empathyCount.toString(), T.s("empathy")),
         ],
       ),
     );
@@ -319,9 +332,9 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildProfileTabItem("Poems", 0),
-          _buildProfileTabItem("Privat", 1),
-          _buildProfileTabItem("Empathy", 2),
+          _buildProfileTabItem(T.s("poems"), 0),
+          _buildProfileTabItem(T.s("privat"), 1),
+          _buildProfileTabItem(T.s("empathy"), 2),
         ],
       ),
     );
@@ -399,7 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildProfilePoemCard(Map<String, dynamic> poem) {
     final title = poem['title'] ?? 'Untitled';
-    final content = poem['content'] ?? '';
+    final content = T.getCleanContent(poem['content'] ?? '');
     final author = poem['author'] ?? 'Anonymous';
     final String avatarUrl = (poem['authorImage'] != null && poem['authorImage'].toString().isNotEmpty)
         ? poem['authorImage'].toString()
@@ -442,10 +455,9 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(cardAvatar),
                 backgroundColor: Colors.grey.shade200,
+                backgroundImage: NetworkImage(cardAvatar),
                 onBackgroundImageError: (_, __) {},
-                child: const Icon(Icons.person, size: 20, color: Colors.white),
               ),
               const SizedBox(width: 10),
               Column(
@@ -589,9 +601,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildEmptyState() {
     String currentTabLabel = "";
-    if (_activeTabIndex == 0) currentTabLabel = "Poems";
-    if (_activeTabIndex == 1) currentTabLabel = "Privat";
-    if (_activeTabIndex == 2) currentTabLabel = "Empathy";
+    if (_activeTabIndex == 0) currentTabLabel = T.s("poems");
+    if (_activeTabIndex == 1) currentTabLabel = T.s("privat");
+    if (_activeTabIndex == 2) currentTabLabel = T.s("empathy");
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -605,8 +617,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 borderRadius: BorderRadius.circular(15),
               ),
               child: ListTile(
-                title: const Text("Draft", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                trailing: Text("See all", style: TextStyle(color: maroon, fontSize: 12, fontWeight: FontWeight.bold)),
+                title: Text(T.s("draft"), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                trailing: Text(T.s("see_all"), style: TextStyle(color: maroon, fontSize: 12, fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const DraftPage()));
                 },
@@ -617,7 +629,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Icon(Icons.description_outlined, size: 60, color: Colors.grey.shade300),
           const SizedBox(height: 15),
           Text(
-            "You still not upload anything in $currentTabLabel",
+            "${T.s("upload_empty")}$currentTabLabel",
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
           ),

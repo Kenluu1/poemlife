@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:poemlife/blockedpage.dart';
 import 'package:poemlife/editprofile.dart';
 import 'package:poemlife/languagepage.dart';
+import 'package:poemlife/changepasswordpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'signin.dart';
+import 'translation.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -19,6 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _isLoading = true;
   String _username = "User";
+  String _nim = "";
   String _avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80";
 
   @override
@@ -35,6 +38,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (profile != null && mounted) {
         setState(() {
           _username = profile['username'] ?? 'User';
+          _nim = profile['nim'] ?? '';
           _avatarUrl = (profile['image'] != null && profile['image'].toString().isNotEmpty)
               ? profile['image'].toString()
               : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80';
@@ -60,16 +64,16 @@ class _SettingsPageState extends State<SettingsPage> {
             Padding(
               padding: const EdgeInsets.only(top: 24.0, bottom: 16.0, left: 16.0, right: 16.0),
               child: Column(
-                children: const [
+                children: [
                   Text(
-                    "Log Out",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    T.s("logout_confirm_title"),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    "Are you sure you want to log out from\nyour account?",
+                    T.s("logout_confirm_desc"),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.black87, fontSize: 14),
+                    style: const TextStyle(color: Colors.black87, fontSize: 14),
                   ),
                 ],
               ),
@@ -85,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         (Route<dynamic> route) => false,
                   );
                 },
-                child: const Text("Log Out", style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(T.s("logout_confirm_title"), style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const Divider(height: 1, color: Colors.grey),
@@ -93,7 +97,7 @@ class _SettingsPageState extends State<SettingsPage> {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel", style: TextStyle(color: Colors.black, fontSize: 16)),
+                child: Text(T.s("cancel"), style: const TextStyle(color: Colors.black, fontSize: 16)),
               ),
             ),
           ],
@@ -115,9 +119,9 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Settings",
-          style: TextStyle(
+        title: Text(
+          T.s("settings"),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -170,12 +174,28 @@ class _SettingsPageState extends State<SettingsPage> {
                   backgroundImage: NetworkImage(_avatarUrl),
                 ),
                 const SizedBox(width: 16),
-                Text(
-                  _username,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _username,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (_nim.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _nim,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const Spacer(),
                 TextButton(
@@ -192,7 +212,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    "Edit",
+                    T.s("edit"),
                     style: TextStyle(
                       color: maroon,
                       fontWeight: FontWeight.bold,
@@ -223,7 +243,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Item Blocked
                     _buildOptionItem(
                         icon: Icons.person_outline,
-                        title: "Blocked",
+                        title: T.s("blocked"),
                         onTap: () {
                         Navigator.push(
                           context,
@@ -235,7 +255,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     _buildOptionItem(
                         icon: Icons.g_translate_outlined,
-                        title: "Language",
+                        title: T.s("language"),
                         onTap: () {
                         Navigator.push(
                           context,
@@ -247,14 +267,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     _buildOptionItem(
                         icon: Icons.lock_outline,
-                        title: "Change password",
+                        title: T.s("change_password"),
                         onTap: () {
-                          /*
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
-                        );
-                        */
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+                          );
                         }
                     ),
                   ],
@@ -277,12 +295,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.logout, color: Colors.white, size: 18),
-                        SizedBox(width: 8),
+                      children: [
+                        const Icon(Icons.logout, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
                         Text(
-                          "Log Out",
-                          style: TextStyle(
+                          T.s("logout_confirm_title"),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

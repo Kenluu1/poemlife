@@ -1,199 +1,143 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:poemlife/detailpage.dart';
 import 'package:flutter/material.dart';
-import 'translation.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/otheruserprofile.dart';
+import 'translation.dart';
+import 'detailpage.dart';
 
-class AngryPage extends StatefulWidget {
-  const AngryPage({super.key});
+class PopularPoemsPage extends StatefulWidget {
+  const PopularPoemsPage({super.key});
 
   @override
-  State<AngryPage> createState() => _AngryPageState();
+  State<PopularPoemsPage> createState() => _PopularPoemsPageState();
 }
 
-class _AngryPageState extends State<AngryPage> {
+class _PopularPoemsPageState extends State<PopularPoemsPage> {
+  final Color maroon = const Color(0xFFA33B3B);
   bool _isLoading = true;
-  bool _isRefreshing = false;
   List<dynamic> _poems = [];
   int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    _loadPoems();
+    _loadCurrentUserId();
+    _loadPopularPoems();
   }
 
-  Future<void> _loadPoems() async {
-    final fetchedPoems = await ApiService().getPoems(categoryId: 3);
+  Future<void> _loadCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    _currentUserId = prefs.getInt('userId');
-    final blockedUsers = prefs.getStringList('blocked_users') ?? [];
-    final reportedPoems = prefs.getStringList('reported_poems') ?? [];
-
-    final filtered = fetchedPoems.where((p) {
-      final String author = p['author'] ?? '';
-      final String idStr = (p['id'] ?? '').toString();
-      return !blockedUsers.contains(author) && !reportedPoems.contains(idStr);
-    }).toList();
-
     if (mounted) {
       setState(() {
-        _poems = filtered;
-        _isLoading = false;
+        _currentUserId = prefs.getInt('userId');
       });
     }
   }
 
-  Future<void> _handleRefresh() async {
-    setState(() => _isRefreshing = true);
-    await _loadPoems();
-    setState(() => _isRefreshing = false);
+  Future<void> _loadPopularPoems() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final data = await ApiService().getPoems(type: 'popular_search');
+      if (mounted) {
+        setState(() {
+          _poems = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading popular poems: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  Widget _buildCustomLoadingDots() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Color(0xFF993B3B), shape: BoxShape.circle)),
-          const SizedBox(width: 5),
-          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Color(0xFFF29C38), shape: BoxShape.circle)),
-        ],
-      ),
-    );
+  String _getRelativeDate(String? dateStr) {
+    if (dateStr == null) return 'Just now';
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      final diff = DateTime.now().difference(date);
+      if (diff.inDays >= 7) {
+        return "${date.day}/${date.month}/${date.year}";
+      } else if (diff.inDays >= 1) {
+        return diff.inDays == 1 ? "1 day ago" : "${diff.inDays} days ago";
+      } else if (diff.inHours >= 1) {
+        return diff.inHours == 1 ? "1 hour ago" : "${diff.inHours} hours ago";
+      } else if (diff.inMinutes >= 1) {
+        return diff.inMinutes == 1 ? "1 minute ago" : "${diff.inMinutes} minutes ago";
+      } else {
+        return 'Just now';
+      }
+    } catch (_) {
+      return 'Just now';
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          T.s('angry_poems'),
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoading ? _buildSkeletonView() : _buildContentView(),
-    );
-  }
-
-  Widget _buildSkeletonView() {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSkeletonBox(height: 180),
-        const SizedBox(height: 20),
-        _buildSkeletonBox(height: 280),
-      ],
-    );
-  }
-
-  Widget _buildSkeletonBox({required double height}) {
-    return Container(
-      height: height,
-      width: double.infinity,
-      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(16)),
-    );
-  }
-
-  Widget _buildContentView() {
-    return RefreshIndicator(
-      onRefresh: _handleRefresh,
-      color: Colors.transparent,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          if (_isRefreshing) _buildCustomLoadingDots(),
-          // Header Image Angry
-          Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFADBD8),
-              borderRadius: BorderRadius.circular(16),
-              image: const DecorationImage(
-                image: AssetImage('assets/angry.png'),
-                fit: BoxFit.contain,
+  Widget _buildSkeletonLoader() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade300, width: 1.5),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          if (_poems.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40.0),
-                child: Text(
-                  T.s("no_poems_category"),
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-              ),
-            )
-          else
-            ..._poems.map((poem) => _buildPoemCard(poem as Map<String, dynamic>, Colors.red[800]!)),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPoemCard(Map<String, dynamic> poem, Color borderColor) {
+  Widget _buildPopularPoemCard(Map<String, dynamic> poem, int index) {
     final title = poem['title'] ?? 'Untitled';
     final author = poem['author'] ?? 'Anonymous';
     final isBookmarked = poem['is_bookmarked'] == 1;
     final String avatarUrl = (poem['authorImage'] != null && poem['authorImage'].toString().isNotEmpty)
         ? poem['authorImage'].toString()
-        : 'https://i.pravatar.cc/150?img=10';
-    
-    String dateStr = 'Just now';
-    if (poem['date_created'] != null) {
-      try {
-        final date = DateTime.parse(poem['date_created']);
-        dateStr = "${date.day}/${date.month}/${date.year}";
-      } catch (_) {}
-    }
+        : 'https://i.pravatar.cc/150?img=${index + 12}';
 
+    final String dateStr = _getRelativeDate(poem['date_created']);
     final rawContent = poem['content'] ?? '';
     final lines = rawContent.split('\n');
-    final contentSnippet = lines.take(4).join('\n');
+    final contentSnippet = lines.take(3).join('\n');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          )
-        ]
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.shade100, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            )
+          ]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: () async {
-              if (poem['authorId'] != null && poem['authorId'] != _currentUserId) {
-                final result = await Navigator.push(
+              if (poem['authorId'] != null) {
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => OtherUserProfile(
@@ -202,19 +146,15 @@ class _AngryPageState extends State<AngryPage> {
                     ),
                   ),
                 );
-                if (result == 'reload') {
-                  _loadPoems();
-                }
               }
             },
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundImage: NetworkImage(avatarUrl),
                   backgroundColor: Colors.grey.shade200,
+                  backgroundImage: NetworkImage(avatarUrl),
                   onBackgroundImageError: (_, __) {},
-                  child: const Icon(Icons.person, size: 20, color: Colors.white),
                 ),
                 const SizedBox(width: 10),
                 Column(
@@ -228,7 +168,10 @@ class _AngryPageState extends State<AngryPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black),
+          ),
           const SizedBox(height: 12),
           Text(
             contentSnippet,
@@ -251,23 +194,17 @@ class _AngryPageState extends State<AngryPage> {
                 ),
               );
               if (result != null && result is Map<String, dynamic> && mounted) {
-                if (result['action'] == 'reload') {
-                  _loadPoems();
-                } else {
-                  setState(() {
-                    poem['is_liked'] = result['is_liked'];
-                    poem['love_count'] = result['love_count'];
-                    poem['is_bookmarked'] = result['is_bookmarked'];
-                    poem['comment_count'] = result['comment_count'];
-                  });
-                }
-              } else {
-                _loadPoems();
+                setState(() {
+                  poem['is_liked'] = result['is_liked'];
+                  poem['love_count'] = result['love_count'];
+                  poem['is_bookmarked'] = result['is_bookmarked'];
+                  poem['comment_count'] = result['comment_count'];
+                });
               }
             },
-            child: Text(
-              T.s("read_more"),
-              style: const TextStyle(
+            child: const Text(
+              "Read More",
+              style: TextStyle(
                 color: Color(0xFF993B3B),
                 fontWeight: FontWeight.w500,
                 fontSize: 13,
@@ -342,18 +279,7 @@ class _AngryPageState extends State<AngryPage> {
                   setState(() {
                     poem['is_bookmarked'] = nextState ? 1 : 0;
                   });
-
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
-                      ),
-                      duration: const Duration(seconds: 1),
-                    ),
-                  );
-
-                  bool success = await ApiService().toggleBookmark(poem['id'], isBookmarked);
+                  bool success = await ApiService().toggleBookmark(poem['id'], !nextState);
                   if (!success) {
                     setState(() {
                       poem['is_bookmarked'] = isBookmarked ? 1 : 0;
@@ -362,9 +288,54 @@ class _AngryPageState extends State<AngryPage> {
                 },
               ),
             ],
-          )
+          ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          T.s('popular_poems'),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? _buildSkeletonLoader()
+          : _poems.isEmpty
+              ? Center(
+                  child: Text(
+                    T.s('no_results'),
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadPopularPoems,
+                  color: maroon,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    itemCount: _poems.length,
+                    itemBuilder: (context, index) {
+                      final poem = Map<String, dynamic>.from(_poems[index]);
+                      return _buildPopularPoemCard(poem, index);
+                    },
+                  ),
+                ),
     );
   }
 }

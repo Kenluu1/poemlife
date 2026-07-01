@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'translation.dart';
 
 class AddCategoriesPage extends StatefulWidget {
   final List<Map<String, dynamic>>? initialCategories;
@@ -73,9 +74,9 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Add categories",
-                style: TextStyle(
+              Text(
+                T.s("add_categories"),
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
@@ -83,7 +84,7 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
               ),
               const SizedBox(height: 10),
               Text(
-                "Add or change categories so readers know what your feeling is about.",
+                T.s("add_categories_desc"),
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[700],
@@ -103,9 +104,9 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
                           border: Border.all(color: Colors.grey.shade300, width: 1.2),
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        child: const Text(
-                          "No categories",
-                          style: TextStyle(
+                        child: Text(
+                          T.s("no_categories"),
+                          style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
@@ -127,7 +128,7 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  category['name'],
+                                  T.s(category['name'].toString().toLowerCase()),
                                   style: const TextStyle(
                                     color: Colors.black87,
                                     fontSize: 14,
@@ -156,9 +157,9 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
               const SizedBox(height: 32),
 
               // Category Options
-              const Text(
-                "Category",
-                style: TextStyle(
+              Text(
+                T.s("category"),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -193,7 +194,7 @@ class _AddCategoriesPageState extends State<AddCategoriesPage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          category['name'],
+                          T.s(category['name'].toString().toLowerCase()),
                           style: const TextStyle(
                             color: Colors.black87,
                             fontSize: 13,

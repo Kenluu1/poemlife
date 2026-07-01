@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/detailpage.dart';
 import 'package:poemlife/otheruserprofile.dart';
+import 'translation.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -149,7 +150,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
     switch (notification['type']) {
       case 'like':
-        spans.add(const TextSpan(text: ' liked your poem '));
+        spans.add(TextSpan(text: T.s('notif_like')));
         spans.add(
           TextSpan(
             text: '"$poemTitle"',
@@ -160,9 +161,9 @@ class _NotificationPageState extends State<NotificationPage> {
         break;
       case 'comment':
         if (poemAuthorId != null && _currentUserId != null && poemAuthorId != _currentUserId) {
-          spans.add(const TextSpan(text: ' replied to your comment on '));
+          spans.add(TextSpan(text: T.s('notif_reply')));
         } else {
-          spans.add(const TextSpan(text: ' commented on your poem '));
+          spans.add(TextSpan(text: T.s('notif_comment')));
         }
         spans.add(
           TextSpan(
@@ -173,7 +174,7 @@ class _NotificationPageState extends State<NotificationPage> {
         spans.add(const TextSpan(text: '.'));
         break;
       case 'reply':
-        spans.add(const TextSpan(text: ' replied to your comment on '));
+        spans.add(TextSpan(text: T.s('notif_reply')));
         spans.add(
           TextSpan(
             text: '"$poemTitle"',
@@ -183,10 +184,10 @@ class _NotificationPageState extends State<NotificationPage> {
         spans.add(const TextSpan(text: '.'));
         break;
       case 'follow':
-        spans.add(const TextSpan(text: ' followed you.'));
+        spans.add(TextSpan(text: T.s('notif_follow')));
         break;
       default:
-        spans.add(const TextSpan(text: ' interacted with you.'));
+        spans.add(TextSpan(text: T.s('notif_default')));
     }
 
     return RichText(
@@ -401,8 +402,8 @@ class _NotificationPageState extends State<NotificationPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Notifications",
+                Text(
+                  T.s("notification"),
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -476,15 +477,15 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            "No notifications yet",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+          Text(
+            T.s("no_notif"),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40.0),
             child: Text(
-              "Return here for updates on reactions, comments, and followers",
+              T.s("no_notif_desc"),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.5),
             ),

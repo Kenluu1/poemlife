@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/detailpage.dart';
+import 'translation.dart';
 
 class OtherUserProfile extends StatefulWidget {
   final int userId;
@@ -78,9 +79,15 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
   Future<void> _fetchTabPoems() async {
     List<dynamic> fetched = [];
     if (_activeTabIndex == 0) {
-      fetched = await ApiService().getPoems(type: 'user', targetUserId: widget.userId);
+      fetched = await ApiService().getPoems(
+        type: 'user',
+        targetUserId: widget.userId,
+      );
     } else {
-      fetched = await ApiService().getPoems(type: 'empathy', targetUserId: widget.userId);
+      fetched = await ApiService().getPoems(
+        type: 'empathy',
+        targetUserId: widget.userId,
+      );
     }
 
     // Local filters for blocked/reported content
@@ -190,12 +197,13 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 onTap: () async {
                   Navigator.pop(context);
                   final prefs = await SharedPreferences.getInstance();
-                  List<String> blocked = prefs.getStringList('blocked_users') ?? [];
+                  List<String> blocked =
+                      prefs.getStringList('blocked_users') ?? [];
                   if (!blocked.contains(authorUsername)) {
                     blocked.add(authorUsername);
                     await prefs.setStringList('blocked_users', blocked);
                   }
-                  
+
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -208,9 +216,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Block",
+                      T.s("block"),
                       style: TextStyle(
                         color: Color(0xFF993B3B),
                         fontSize: 16,
@@ -228,7 +236,8 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                     final poemId = _tabPoems.first['id'];
                     if (poemId != null) {
                       final prefs = await SharedPreferences.getInstance();
-                      List<String> reported = prefs.getStringList('reported_poems') ?? [];
+                      List<String> reported =
+                          prefs.getStringList('reported_poems') ?? [];
                       final String poemIdStr = poemId.toString();
                       if (!reported.contains(poemIdStr)) {
                         reported.add(poemIdStr);
@@ -236,7 +245,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                       }
                     }
                   }
-                  
+
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -249,9 +258,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Report",
+                      T.s("report"),
                       style: TextStyle(
                         color: Color(0xFF993B3B),
                         fontSize: 16,
@@ -271,7 +280,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                     muted.add(authorUsername);
                     await prefs.setStringList('muted_users', muted);
                   }
-                  
+
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -283,9 +292,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Mute",
+                      T.s("mute"),
                       style: TextStyle(
                         color: Colors.black87,
                         fontSize: 16,
@@ -304,8 +313,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                     final poemId = poem['id'];
                     if (poemId != null) {
                       final prefs = await SharedPreferences.getInstance();
-                      List<String> sharedJson = prefs.getStringList('shared_empathy_poems') ?? [];
-                      
+                      List<String> sharedJson =
+                          prefs.getStringList('shared_empathy_poems') ?? [];
+
                       bool alreadyShared = false;
                       for (var s in sharedJson) {
                         try {
@@ -316,16 +326,19 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                           }
                         } catch (_) {}
                       }
-                      
+
                       if (!alreadyShared) {
                         sharedJson.add(jsonEncode(poem));
-                        await prefs.setStringList('shared_empathy_poems', sharedJson);
+                        await prefs.setStringList(
+                          'shared_empathy_poems',
+                          sharedJson,
+                        );
                         // Persist share reaction to backend database
                         await ApiService().toggleReaction(poemId, 2);
                       }
                     }
                   }
-                  
+
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -337,9 +350,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Share",
+                      T.s("share"),
                       style: TextStyle(
                         color: Colors.black87,
                         fontSize: 16,
@@ -371,8 +384,12 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
           ),
           child: Center(
             child: Text(
-              "Following",
-              style: TextStyle(color: maroon, fontSize: 13, fontWeight: FontWeight.bold),
+              T.s("following"),
+              style: TextStyle(
+                color: maroon,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -387,10 +404,14 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             color: maroon,
             borderRadius: BorderRadius.circular(18),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
-              "Follow",
-              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              T.s("follow"),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -430,9 +451,13 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
   }
 
   Widget _buildProfileContent() {
-    final avatar = _profileData?['image'] ?? '';
-    final fullname = _profileData?['fullname'] ?? widget.username;
-    final bio = _profileData?['bio'] ?? 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
+    final profileData = _profileData;
+    final avatar = profileData?['image'] ?? '';
+    final fullname = profileData?['fullname'] ?? widget.username;
+    final bio =
+        profileData?['bio'] ??
+        'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
+    final nim = profileData?['nim']?.toString() ?? '';
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -441,10 +466,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            const SizedBox(
-              height: 180,
-              width: double.infinity,
-            ),
+            const SizedBox(height: 180, width: double.infinity),
             Container(
               height: 140,
               width: double.infinity,
@@ -471,7 +493,10 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             ),
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 10.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -483,7 +508,11 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.black, size: 20),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                       ),
                     ),
                     GestureDetector(
@@ -494,7 +523,11 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.more_horiz, color: Colors.black, size: 20),
+                        child: const Icon(
+                          Icons.more_horiz,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -512,17 +545,17 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 ),
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
+                  backgroundImage: avatar.isNotEmpty
+                      ? NetworkImage(avatar)
+                      : null,
                   backgroundColor: skeletonGrey,
-                  child: avatar.isEmpty ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
+                  child: avatar.isEmpty
+                      ? const Icon(Icons.person, size: 40, color: Colors.white)
+                      : null,
                 ),
               ),
             ),
-            Positioned(
-              bottom: 10,
-              right: 20,
-              child: _buildFollowButton(),
-            ),
+            Positioned(bottom: 10, right: 20, child: _buildFollowButton()),
           ],
         ),
         const SizedBox(height: 10),
@@ -535,12 +568,30 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             children: [
               Text(
                 fullname,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              if (nim.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  nim,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 bio,
-                style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[700],
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -638,13 +689,14 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
       children: [
         Text(
           countStr,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
@@ -659,7 +711,11 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
         child: Center(
           child: Text(
             emptyText,
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontStyle: FontStyle.italic),
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ),
       );
@@ -681,10 +737,12 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
     final title = poem['title'] ?? 'Untitled';
     final author = poem['author'] ?? 'Anonymous';
     final isBookmarked = poem['is_bookmarked'] == 1;
-    final String avatarUrl = (poem['authorImage'] != null && poem['authorImage'].toString().isNotEmpty)
+    final String avatarUrl =
+        (poem['authorImage'] != null &&
+            poem['authorImage'].toString().isNotEmpty)
         ? poem['authorImage'].toString()
         : 'https://i.pravatar.cc/150?img=10';
-    
+
     String dateStr = 'Just now';
     if (poem['date_created'] != null) {
       try {
@@ -693,7 +751,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
       } catch (_) {}
     }
 
-    final rawContent = poem['content'] ?? '';
+    final rawContent = T.getCleanContent(poem['content'] ?? '');
     final lines = rawContent.split('\n');
     final contentSnippet = lines.take(4).join('\n');
 
@@ -709,8 +767,8 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             color: Colors.black.withOpacity(0.02),
             blurRadius: 5,
             offset: const Offset(0, 3),
-          )
-        ]
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -728,14 +786,31 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(author, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text(dateStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text(
+                    author,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    dateStr,
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'serif',
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 12),
           Text(
             contentSnippet,
@@ -751,11 +826,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             onTap: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => DetailPage(
-                    poem: poem,
-                  ),
-                ),
+                MaterialPageRoute(builder: (context) => DetailPage(poem: poem)),
               );
               if (result != null && result is Map<String, dynamic> && mounted) {
                 if (result['action'] == 'reload') {
@@ -789,25 +860,39 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 children: [
                   Icon(Icons.language, size: 18, color: Colors.grey[600]),
                   const SizedBox(width: 4),
-                  const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text(
+                    "394",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () async {
                       final bool currentlyLiked = poem['is_liked'] == true;
                       setState(() {
                         poem['is_liked'] = !currentlyLiked;
-                        int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                        int currentCount =
+                            int.tryParse(
+                              poem['love_count']?.toString() ?? '0',
+                            ) ??
+                            0;
                         if (poem['is_liked']) {
                           poem['love_count'] = currentCount + 1;
                         } else {
                           poem['love_count'] = currentCount - 1;
                         }
                       });
-                      bool success = await ApiService().toggleReaction(poem['id'], 1);
+                      bool success = await ApiService().toggleReaction(
+                        poem['id'],
+                        1,
+                      );
                       if (!success) {
                         setState(() {
                           poem['is_liked'] = currentlyLiked;
-                          int currentCount = int.tryParse(poem['love_count']?.toString() ?? '0') ?? 0;
+                          int currentCount =
+                              int.tryParse(
+                                poem['love_count']?.toString() ?? '0',
+                              ) ??
+                              0;
                           if (poem['is_liked']) {
                             poem['love_count'] = currentCount + 1;
                           } else {
@@ -817,9 +902,13 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                       }
                     },
                     child: Icon(
-                      poem['is_liked'] == true ? Icons.favorite : Icons.favorite_border,
+                      poem['is_liked'] == true
+                          ? Icons.favorite
+                          : Icons.favorite_border,
                       size: 18,
-                      color: poem['is_liked'] == true ? const Color(0xFF993B3B) : Colors.grey,
+                      color: poem['is_liked'] == true
+                          ? const Color(0xFF993B3B)
+                          : Colors.grey,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -828,7 +917,11 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(width: 16),
-                  Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 18,
+                    color: Colors.grey[600],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     (poem['comment_count'] ?? '0').toString(),
@@ -854,13 +947,18 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
+                        nextState
+                            ? "added to favourite page"
+                            : "remove from favourite",
                       ),
                       duration: const Duration(seconds: 1),
                     ),
                   );
 
-                  bool success = await ApiService().toggleBookmark(poem['id'], isBookmarked);
+                  bool success = await ApiService().toggleBookmark(
+                    poem['id'],
+                    isBookmarked,
+                  );
                   if (!success) {
                     setState(() {
                       poem['is_bookmarked'] = isBookmarked ? 1 : 0;
@@ -869,7 +967,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                 },
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -890,7 +988,10 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             ),
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 10.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -950,7 +1051,11 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
             children: [
               Container(width: 180, height: 22, color: Colors.white),
               const SizedBox(height: 12),
-              Container(width: double.infinity, height: 14, color: Colors.white),
+              Container(
+                width: double.infinity,
+                height: 14,
+                color: Colors.white,
+              ),
               const SizedBox(height: 6),
               Container(width: 250, height: 14, color: Colors.white),
             ],
@@ -964,21 +1069,27 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Column(children: [
-                Container(width: 40, height: 18, color: Colors.white),
-                const SizedBox(height: 6),
-                Container(width: 60, height: 12, color: Colors.white)
-              ]),
-              Column(children: [
-                Container(width: 40, height: 18, color: Colors.white),
-                const SizedBox(height: 6),
-                Container(width: 60, height: 12, color: Colors.white)
-              ]),
-              Column(children: [
-                Container(width: 40, height: 18, color: Colors.white),
-                const SizedBox(height: 6),
-                Container(width: 60, height: 12, color: Colors.white)
-              ]),
+              Column(
+                children: [
+                  Container(width: 40, height: 18, color: Colors.white),
+                  const SizedBox(height: 6),
+                  Container(width: 60, height: 12, color: Colors.white),
+                ],
+              ),
+              Column(
+                children: [
+                  Container(width: 40, height: 18, color: Colors.white),
+                  const SizedBox(height: 6),
+                  Container(width: 60, height: 12, color: Colors.white),
+                ],
+              ),
+              Column(
+                children: [
+                  Container(width: 40, height: 18, color: Colors.white),
+                  const SizedBox(height: 6),
+                  Container(width: 60, height: 12, color: Colors.white),
+                ],
+              ),
             ],
           ),
         ),

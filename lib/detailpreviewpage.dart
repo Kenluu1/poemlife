@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'translation.dart';
 
 class DetailPreviewPage extends StatelessWidget {
   final String title;
@@ -82,10 +83,11 @@ class DetailPreviewPage extends StatelessWidget {
               const SizedBox(height: 20),
 
               // Content (Centered, Serif font)
-              Center(
+              Container(
+                width: double.infinity,
                 child: Text(
-                  content,
-                  textAlign: TextAlign.center,
+                  T.getCleanContent(content),
+                  textAlign: T.getTextAlign(content),
                   style: const TextStyle(
                     fontSize: 14,
                     height: 1.8,

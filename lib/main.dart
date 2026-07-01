@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'splashscreen.dart';
+import 'translation.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await T.init();
   runApp(const MyApp());
 }
 
@@ -10,9 +13,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: SplashScreen(),
+    return ValueListenableBuilder<String>(
+      valueListenable: T.languageNotifier,
+      builder: (context, lang, child) {
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: SplashScreen(),
+        );
+      },
     );
   }
 }

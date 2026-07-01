@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
+import 'translation.dart';
 
 class AppColors {
   static const Color primaryMaroon = Color(0xFF8B2B32);
@@ -126,12 +127,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   discard = true;
                   Navigator.pop(context);
                 },
-                child: const Center(
+                child: Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      'Discard',
-                      style: TextStyle(
+                      T.s('discard'),
+                      style: const TextStyle(
                         color: AppColors.accentMerah,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -146,12 +147,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   discard = false;
                   Navigator.pop(context);
                 },
-                child: const Center(
+                child: Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      'Cancel',
-                      style: TextStyle(
+                      T.s('cancel'),
+                      style: const TextStyle(
                         color: Colors.black,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -173,8 +174,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final usernameText = _usernameController.text.trim();
     if (usernameText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Username cannot be empty!"),
+        SnackBar(
+          content: Text(T.s("username_empty_error")),
           backgroundColor: AppColors.accentMerah,
         ),
       );
@@ -204,16 +205,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Profile updated successfully!"),
+          SnackBar(
+            content: Text(T.s("profile_updated_success")),
             backgroundColor: AppColors.primaryMaroon,
           ),
         );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to update profile. Please try again."),
+          SnackBar(
+            content: Text(T.s("profile_updated_fail")),
             backgroundColor: AppColors.accentMerah,
           ),
         );
@@ -242,9 +243,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               }
             },
           ),
-          title: const Text(
-            'Edit Profile',
-            style: TextStyle(
+          title: Text(
+            T.s('edit_profile'),
+            style: const TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -370,14 +371,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget _buildFormInputs() {
     return Column(
       children: [
-        _buildCustomInputField(controller: _usernameController, label: 'Username', hint: 'David Done'),
+        _buildCustomInputField(controller: _usernameController, label: T.s('username'), hint: 'David Done'),
         const SizedBox(height: 16),
         _buildCustomInputField(controller: _nimController, label: 'NIM', hint: '1600878967'),
         const SizedBox(height: 16),
         _buildCustomInputField(
             controller: _emailController, label: 'Email', hint: 'anonim@gmail.com', keyboardType: TextInputType.emailAddress),
         const SizedBox(height: 16),
-        _buildCustomInputField(controller: _bioController, label: 'Bio', hint: 'Two roads diverged...', maxLines: 5),
+        _buildCustomInputField(controller: _bioController, label: T.s('bio'), hint: 'Two roads diverged...', maxLines: 5),
       ],
     );
   }
@@ -444,9 +445,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       child: _isSavingLoading
           ? _buildDotLoadingWidget(forButton: true)
-          : const Text(
-        'Save',
-        style: TextStyle(
+          : Text(
+        T.s('save'),
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.bold,

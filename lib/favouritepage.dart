@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/detailpage.dart';
+import 'translation.dart';
 
 class FavoritePage extends StatefulWidget {
   const FavoritePage({Key? key}) : super(key: key);
@@ -51,9 +52,9 @@ class _FavoritePageState extends State<FavoritePage> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          "remove from favourite",
-          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+        content: Text(
+          T.lang == 'id' ? 'Dihapus dari favorit' : 'Removed from favorites',
+          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
         ),
         backgroundColor: maroon,
         duration: const Duration(seconds: 2),
@@ -107,9 +108,9 @@ class _FavoritePageState extends State<FavoritePage> {
             ),
           ),
           const SizedBox(height: 30),
-          const Text(
-            "No Favorite Poem",
-            style: TextStyle(
+          Text(
+            T.lang == 'id' ? 'Belum ada puisi favorit' : 'No Favorite Poem',
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -117,7 +118,7 @@ class _FavoritePageState extends State<FavoritePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Come back here to see your favorite poems",
+            T.s("no_bookmarks_desc"),
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey[700],
@@ -155,7 +156,7 @@ class _FavoritePageState extends State<FavoritePage> {
           } catch (_) {}
         }
 
-        final rawContent = poem['content'] ?? '';
+        final rawContent = T.getCleanContent(poem['content'] ?? '');
         final lines = rawContent.split('\n');
         final contentSnippet = lines.take(4).join('\n');
 
@@ -222,7 +223,7 @@ class _FavoritePageState extends State<FavoritePage> {
                   _loadFavorites();
                 },
                 child: Text(
-                  "Read More",
+                  T.s("read_more"),
                   style: TextStyle(
                     color: maroon,
                     fontWeight: FontWeight.w500,
@@ -288,9 +289,9 @@ class _FavoritePageState extends State<FavoritePage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Favorite",
-          style: TextStyle(
+        title: Text(
+          T.s("favourites"),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,

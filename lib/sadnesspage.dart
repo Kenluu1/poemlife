@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/detailpage.dart';
 import 'package:flutter/material.dart';
+import 'translation.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/otheruserprofile.dart';
 
@@ -75,9 +76,9 @@ class _SadnessPageState extends State<SadnessPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Sad Poems',
-          style: TextStyle(
+        title: Text(
+          T.s('sadness_poems'),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -130,7 +131,7 @@ class _SadnessPageState extends State<SadnessPage> {
               color: const Color(0xFF67A3D9),
               borderRadius: BorderRadius.circular(16),
               image: const DecorationImage(
-                image: AssetImage('assets/1.png'),
+                image: AssetImage('assets/Sad.png'),
                 fit: BoxFit.contain,
               ),
             ),
@@ -138,12 +139,12 @@ class _SadnessPageState extends State<SadnessPage> {
           const SizedBox(height: 20),
 
           if (_poems.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40.0),
+                padding: const EdgeInsets.symmetric(vertical: 40.0),
                 child: Text(
-                  "No poems found in this category",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  T.s("no_poems_category"),
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             )
@@ -267,9 +268,9 @@ class _SadnessPageState extends State<SadnessPage> {
                 _loadPoems();
               }
             },
-            child: const Text(
-              "Read More",
-              style: TextStyle(
+            child: Text(
+              T.s("read_more"),
+              style: const TextStyle(
                 color: Color(0xFF993B3B),
                 fontWeight: FontWeight.w500,
                 fontSize: 13,

@@ -11,6 +11,7 @@ import 'happinesspage.dart';
 import 'angrypage.dart';
 import 'detailpage.dart';
 import 'package:poemlife/otheruserprofile.dart';
+import 'translation.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -248,9 +249,9 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        "Posting...",
-                        style: TextStyle(
+                      Text(
+                        T.s("posting"),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
@@ -263,9 +264,9 @@ class _HomePageState extends State<HomePage> {
                         size: 20,
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        "Posted",
-                        style: TextStyle(
+                      Text(
+                        T.s("posted"),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
@@ -279,9 +280,9 @@ class _HomePageState extends State<HomePage> {
                           });
                           _onNavTapped(3); // Switch to Profile Page tab
                         },
-                        child: const Text(
-                          "View",
-                          style: TextStyle(
+                        child: Text(
+                          T.s("view"),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -392,9 +393,9 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Hi, $_currentUsername.", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        SizedBox(height: 5),
-        Text("What do you feel today ?", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        Text("${T.s("hi")}, $_currentUsername.", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Text(T.s("what_feel"), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -405,15 +406,15 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          _buildMoodCard("Sadness", Color(0xFF67A3D9), 'assets/Sad.png', () {
+          _buildMoodCard(T.s("sadness"), Color(0xFF67A3D9), 'assets/Sad.png', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const SadnessPage()));
           }),
 
-          _buildMoodCard("Happiness", Color(0xFFF29C38), 'assets/Happy.png', () {
+          _buildMoodCard(T.s("happiness"), Color(0xFFF29C38), 'assets/Happy.png', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const HappinessPage()));
           }),
 
-          _buildMoodCard("Angry", Color(0xFFE57373), 'assets/angry.png', () {
+          _buildMoodCard(T.s("angry"), Color(0xFFE57373), 'assets/angry.png', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const AngryPage()));
           }),
         ],
@@ -464,9 +465,9 @@ class _HomePageState extends State<HomePage> {
   Widget _buildTabs() {
     return Row(
       children: [
-        Expanded(child: _buildSingleTab("For You", 0)),
-        SizedBox(width: 15),
-        Expanded(child: _buildSingleTab("Following", 1)),
+        Expanded(child: _buildSingleTab(T.s("for_you"), 0)),
+        const SizedBox(width: 15),
+        Expanded(child: _buildSingleTab(T.s("following"), 1)),
       ],
     );
   }
@@ -511,7 +512,7 @@ class _HomePageState extends State<HomePage> {
       } catch (_) {}
     }
 
-    final rawContent = poem['content'] ?? '';
+    final rawContent = T.getCleanContent(poem['content'] ?? '');
     final lines = rawContent.split('\n');
     final contentSnippet = lines.take(4).join('\n');
 
@@ -733,14 +734,14 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     } else if (_poems.isEmpty) {
-      String tabName = _activeFeedTab == 0 ? "For You" : "Following";
+      String tabName = _activeFeedTab == 0 ? T.s("for_you") : T.s("following");
       return Column(
         children: [
           Icon(Icons.feed_outlined, size: 60, color: Colors.grey.shade300),
-          SizedBox(height: 15),
+          const SizedBox(height: 15),
           Text(
-            "There are no posts in $tabName yet.",
-            style: TextStyle(color: Colors.grey),
+            "${T.s("no_posts")}$tabName${T.s("no_posts_suffix")}",
+            style: const TextStyle(color: Colors.grey),
           ),
         ],
       );

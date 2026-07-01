@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'translation.dart';
 
 class PublicationPage extends StatefulWidget {
   final String initialPublication;
@@ -36,7 +37,7 @@ class _PublicationPageState extends State<PublicationPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              value,
+              T.s(value.toLowerCase().replaceAll(' ', '_')),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
@@ -97,9 +98,9 @@ class _PublicationPageState extends State<PublicationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Select a publication",
-                style: TextStyle(
+              Text(
+                T.s("select_publication"),
+                style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
@@ -107,7 +108,7 @@ class _PublicationPageState extends State<PublicationPage> {
               ),
               const SizedBox(height: 10),
               Text(
-                "Choose whether your poems can be seen by anyone. Let your poems touch everyone, only your followers, or keep them to yourself.",
+                T.s("select_publication_desc"),
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[700],

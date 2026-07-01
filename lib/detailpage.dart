@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/otheruserprofile.dart';
+import 'translation.dart';
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> poem;
@@ -251,10 +252,10 @@ class _DetailPageState extends State<DetailPage> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Block",
-                      style: TextStyle(
+                      T.s("block"),
+                      style: const TextStyle(
                         color: Color(0xFF993B3B),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -290,10 +291,10 @@ class _DetailPageState extends State<DetailPage> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Report",
-                      style: TextStyle(
+                      T.s("report"),
+                      style: const TextStyle(
                         color: Color(0xFF993B3B),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -328,10 +329,10 @@ class _DetailPageState extends State<DetailPage> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Mute",
-                      style: TextStyle(
+                      T.s("mute"),
+                      style: const TextStyle(
                         color: Colors.black87,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -377,10 +378,10 @@ class _DetailPageState extends State<DetailPage> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Share",
-                      style: TextStyle(
+                      T.s("share"),
+                      style: const TextStyle(
                         color: Colors.black87,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -400,13 +401,13 @@ class _DetailPageState extends State<DetailPage> {
   String _getCategoryName(int? categoryId) {
     switch (categoryId) {
       case 1:
-        return "Sadness";
+        return T.s("sadness");
       case 2:
-        return "Happiness";
+        return T.s("happiness");
       case 3:
-        return "Angry";
+        return T.s("angry");
       default:
-        return "Poem";
+        return T.s("poem");
     }
   }
 
@@ -792,8 +793,8 @@ class _DetailPageState extends State<DetailPage> {
                       controller: _commentController,
                       decoration: InputDecoration(
                         hintText: _replyingToComment != null
-                            ? "Reply to ${_replyingToComment!['author']}..."
-                            : "Type your comment",
+                            ? "${T.s("reply_to")}${_replyingToComment!['author']}..."
+                            : T.s("comment_hint"),
                         hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
                         border: InputBorder.none,
                       ),
@@ -827,7 +828,7 @@ class _DetailPageState extends State<DetailPage> {
         ((_poem['author'] != null && _poem['author'] is Map)
             ? _poem['author']['image']
             : null);
-    final categoryId = _poem['category_id'] as int?;
+    final categoryId = (_poem['category_id'] ?? _poem['categoryId']) as int?;
     final int? poemAuthorId = (_poem['authorId'] != null)
         ? int.tryParse(_poem['authorId'].toString())
         : ((_poem['author'] != null && _poem['author'] is Map && _poem['author']['id'] != null)
@@ -975,10 +976,11 @@ class _DetailPageState extends State<DetailPage> {
                           ),
                           const SizedBox(height: 20),
 
-                          Center(
+                          Container(
+                            width: double.infinity,
                             child: Text(
-                              content,
-                              textAlign: TextAlign.center,
+                              T.getCleanContent(content),
+                              textAlign: T.getTextAlign(content),
                               style: const TextStyle(
                                   fontSize: 14,
                                   height: 1.8,
@@ -1019,9 +1021,9 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      "Comment",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    Text(
+                      T.s("comment"),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 16),
                     _buildCommentList(),
@@ -1050,7 +1052,7 @@ class _DetailPageState extends State<DetailPage> {
       child: Row(
         children: [
           Text(
-            "Replying to ${_replyingToComment!['author']}",
+            "${T.s("reply_to")}${_replyingToComment!['author']}",
             style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
           ),
           const Spacer(),

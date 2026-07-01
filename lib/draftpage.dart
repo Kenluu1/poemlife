@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/API.dart';
+import 'translation.dart';
 
 class DraftPage extends StatefulWidget {
   const DraftPage({super.key});
@@ -53,7 +54,7 @@ class _DraftPageState extends State<DraftPage> {
     Navigator.pop(context); // Hide loading
     if (!allSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Beberapa draft gagal dihapus')),
+        SnackBar(content: Text(T.lang == 'id' ? 'Beberapa draf gagal dihapus' : 'Failed to delete some drafts')),
       );
     }
     _loadDrafts();
@@ -77,7 +78,7 @@ class _DraftPageState extends State<DraftPage> {
         _loadDrafts();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menghapus draft')),
+          SnackBar(content: Text(T.lang == 'id' ? 'Gagal menghapus draf' : 'Failed to delete draft')),
         );
       }
     }
@@ -104,9 +105,9 @@ class _DraftPageState extends State<DraftPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Draft",
-          style: TextStyle(
+        title: Text(
+          T.s("draft"),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -117,7 +118,7 @@ class _DraftPageState extends State<DraftPage> {
           TextButton(
             onPressed: _drafts.isEmpty || _isLoading ? null : _deleteAll,
             child: Text(
-              "Delete all",
+              T.s("delete_all"),
               style: TextStyle(
                 color: _drafts.isEmpty || _isLoading ? Colors.grey : const Color(0xFFB57B7B), // Warna merah pudar sesuai desain
                 fontWeight: FontWeight.bold,
@@ -198,11 +199,14 @@ class _DraftPageState extends State<DraftPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                draft["content"] ?? "",
-                style: TextStyle(
-                  color: Colors.grey[800],
-                  fontSize: 13,
+              Center(
+                child: Text(
+                  T.getCleanContent(draft["content"] ?? ""),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],
@@ -213,15 +217,15 @@ class _DraftPageState extends State<DraftPage> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.insert_drive_file_outlined, size: 60, color: Colors.grey),
-          SizedBox(height: 16),
+          const Icon(Icons.insert_drive_file_outlined, size: 60, color: Colors.grey),
+          const SizedBox(height: 16),
           Text(
-            "No Drafts",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            T.s("no_drafts"),
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
       ),

@@ -230,6 +230,67 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> getTopWriters({String? filter, int? limit}) async {
+    final Map<String, String> queryParams = {};
+    if (filter != null) queryParams['filter'] = filter;
+    if (limit != null) queryParams['limit'] = limit.toString();
+
+    final url = Uri.parse('$baseUrl/user/top-writers').replace(queryParameters: queryParams);
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          return responseData['data'] as List<dynamic>;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getTopWriters: $e');
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getWordBank() async {
+    final url = Uri.parse('$baseUrl/misc/word_bank');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          return responseData['data'] as List<dynamic>;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getWordBank: $e');
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> searchUsers(String query) async {
+    final url = Uri.parse('$baseUrl/user/search/query?q=${Uri.encodeComponent(query)}');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          return responseData['data'] as List<dynamic>;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error searchUsers: $e');
+      return [];
+    }
+  }
+
   Future<bool> followUser(int userId) async {
     final url = Uri.parse('$baseUrl/user/$userId/follow');
     try {
@@ -362,6 +423,28 @@ class ApiService {
       return false;
     } catch (e) {
       print('Error toggleReaction: $e');
+      return false;
+    }
+  }
+
+  Future<bool> changePassword(String newPassword) async {
+    final url = Uri.parse('$baseUrl/user/change-password');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'password': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error changePassword: $e');
       return false;
     }
   }

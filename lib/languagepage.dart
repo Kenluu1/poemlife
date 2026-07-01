@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'translation.dart';
 
 class LanguagePage extends StatefulWidget {
   const LanguagePage({Key? key}) : super(key: key);
@@ -16,13 +17,14 @@ class _LanguagePageState extends State<LanguagePage> {
   bool _isLoadingInitial = true;
   bool _isSavingLoading = false;
 
-  // Data bahasa
-  final String _currentLanguage = "English";
+  String _currentLanguage = "English";
   String _selectedLanguage = "English";
 
   @override
   void initState() {
     super.initState();
+    _currentLanguage = T.lang == 'id' ? "Bahasa Indonesia" : "English";
+    _selectedLanguage = _currentLanguage;
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         setState(() {
@@ -32,7 +34,6 @@ class _LanguagePageState extends State<LanguagePage> {
     });
   }
 
-
   bool get _hasChanges => _selectedLanguage != _currentLanguage;
 
   void _onSavePressed() async {
@@ -40,15 +41,16 @@ class _LanguagePageState extends State<LanguagePage> {
       _isSavingLoading = true;
     });
 
+    final String newLangCode = _selectedLanguage == "Bahasa Indonesia" ? "id" : "en";
+    await T.setLang(newLangCode);
 
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
       setState(() {
         _isSavingLoading = false;
+        _currentLanguage = _selectedLanguage;
       });
-
-
 
       Navigator.pop(context);
     }
@@ -67,9 +69,9 @@ class _LanguagePageState extends State<LanguagePage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Language",
-          style: TextStyle(
+        title: Text(
+          T.s("language_title"),
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -81,19 +83,17 @@ class _LanguagePageState extends State<LanguagePage> {
       bottomNavigationBar: _isLoadingInitial
           ? null
           : Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32), // Padding untuk letak tombol
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: _buildSaveButton(),
       ),
     );
   }
-
 
   Widget _buildLoadingView() {
     return Center(
       child: _buildDotLoadingWidget(),
     );
   }
-
 
   Widget _buildContentView() {
     return Padding(
@@ -102,7 +102,7 @@ class _LanguagePageState extends State<LanguagePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Choose your preferred language. Please select\nyour language.",
+            T.s("change_lang_desc"),
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey[800],
@@ -110,7 +110,6 @@ class _LanguagePageState extends State<LanguagePage> {
             ),
           ),
           const SizedBox(height: 24),
-
 
           Container(
             padding: const EdgeInsets.all(20),
@@ -131,7 +130,6 @@ class _LanguagePageState extends State<LanguagePage> {
       ),
     );
   }
-
 
   Widget _buildLanguageOption(String languageCode) {
     bool isSelected = _selectedLanguage == languageCode;
@@ -204,7 +202,7 @@ class _LanguagePageState extends State<LanguagePage> {
         child: _isSavingLoading
             ? _buildDotLoadingWidget(forButton: true)
             : Text(
-          'Save',
+          T.s("save"),
           style: TextStyle(
             color: _hasChanges ? Colors.white : disabledTeksAbu,
             fontSize: 16,
@@ -214,7 +212,6 @@ class _LanguagePageState extends State<LanguagePage> {
       ),
     );
   }
-
 
   Widget _buildDotLoadingWidget({bool forButton = false}) {
     return Row(

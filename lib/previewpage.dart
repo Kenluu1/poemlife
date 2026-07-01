@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/addcategoriespage.dart';
 import 'package:poemlife/publicationpage.dart';
 import 'package:poemlife/detailpreviewpage.dart';
+import 'translation.dart';
 
 class PreviewPage extends StatefulWidget {
   final String title;
@@ -72,13 +73,13 @@ class _PreviewPageState extends State<PreviewPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Preview",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            Text(
+              T.s("preview"),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Text(
-              "This is how your poem will be shown to readers. You can edit your poem or choose category of your poem before submitting.",
+              T.s("preview_desc"),
               style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5),
             ),
             const SizedBox(height: 30),
@@ -115,8 +116,8 @@ class _PreviewPageState extends State<PreviewPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    widget.content,
-                    textAlign: TextAlign.center,
+                    T.getCleanContent(widget.content),
+                    textAlign: T.getTextAlign(widget.content),
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, height: 1.6),
@@ -137,7 +138,7 @@ class _PreviewPageState extends State<PreviewPage> {
                       );
                     },
                     child: Text(
-                      "Read More",
+                      T.s("read_more"),
                       style: TextStyle(color: Colors.red[300], fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -157,11 +158,11 @@ class _PreviewPageState extends State<PreviewPage> {
               child: Column(
                 children: [
                   _buildSettingRow(
-                    "Category",
+                    T.s("category"),
                     _selectedCategories.isEmpty
-                        ? "Add category"
-                        : _selectedCategories.map((c) => c['name']).join(', '),
-                    "See all",
+                        ? T.s("add_category")
+                        : _selectedCategories.map((c) => T.s(c['name'].toString().toLowerCase())).join(', '),
+                    T.s("see_all"),
                     onTap: () async {
                       final result = await Navigator.push(
                         context,
@@ -180,9 +181,9 @@ class _PreviewPageState extends State<PreviewPage> {
                   ),
                   Divider(height: 1, color: Colors.red[100]),
                   _buildSettingRow(
-                    "Publication",
-                    _selectedPublication,
-                    "See all",
+                    T.s("publication"),
+                    T.s(_selectedPublication.toLowerCase().replaceAll(' ', '_')),
+                    T.s("see_all"),
                     onTap: () async {
                       final result = await Navigator.push(
                         context,
@@ -222,10 +223,10 @@ class _PreviewPageState extends State<PreviewPage> {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.insert_drive_file_outlined, color: Colors.black54, size: 20),
-                      SizedBox(width: 8),
-                      Text("Draft", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    children: [
+                      const Icon(Icons.insert_drive_file_outlined, color: Colors.black54, size: 20),
+                      const SizedBox(width: 8),
+                      Text(T.s("draft"), style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -242,10 +243,10 @@ class _PreviewPageState extends State<PreviewPage> {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.send_outlined, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text("Posting", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    children: [
+                      const Icon(Icons.send_outlined, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(T.s("posting"), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
