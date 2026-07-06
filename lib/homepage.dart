@@ -689,7 +689,7 @@ class _HomePageState extends State<HomePage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
+                        nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
                         style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       backgroundColor: const Color(0xFF993B3B),

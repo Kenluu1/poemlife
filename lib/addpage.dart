@@ -512,11 +512,11 @@ class _AddPageState extends State<AddPage> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             IconButton(
-              icon: Icon(Icons.lens_blur, color: Colors.purple.shade300),
+              icon: Image.asset('assets/primaryicon.png', width: 24, height: 24),
               onPressed: _showWordBankBottomSheet,
             ),
             IconButton(
-              icon: const Icon(Icons.sync, color: Colors.black54),
+              icon: Image.asset('assets/aiicon.png', width: 24, height: 24),
               onPressed: _toggleTranslations,
             ),
             IconButton(

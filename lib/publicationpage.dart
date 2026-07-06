@@ -128,8 +128,6 @@ class _PublicationPageState extends State<PublicationPage> {
                     _buildOption("Everyone"),
                     Divider(height: 1, color: Colors.grey.shade200),
                     _buildOption("Following"),
-                    Divider(height: 1, color: Colors.grey.shade200),
-                    _buildOption("Only me"),
                   ],
                 ),
               ),

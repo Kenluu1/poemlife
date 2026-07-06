@@ -146,6 +146,14 @@ class _SearchPageState extends State<SearchPage> {
     final prefs = await SharedPreferences.getInstance();
     final int? userId = prefs.getInt('userId');
     final String key = userId != null ? 'recent_searches_$userId' : 'recent_searches_guest';
+
+    // One-time clear of existing history to make it look empty as requested
+    final bool cleared = prefs.getBool('history_cleared_v2') ?? false;
+    if (!cleared) {
+      await prefs.remove(key);
+      await prefs.setBool('history_cleared_v2', true);
+    }
+
     final jsonStr = prefs.getString(key);
     if (jsonStr != null) {
       try {
@@ -161,31 +169,11 @@ class _SearchPageState extends State<SearchPage> {
         print('Error parsing recent searches: $e');
       }
     } else {
-      // Seed initial history matching the mockup photo!
-      final initialHistory = [
-        {
-          'type': 'user',
-          'id': 2,
-          'username': 'Kenzy',
-          'fullname': 'David Dones',
-          'image': 'https://i.pravatar.cc/150?img=11',
-          'followers_count': 19000
-        },
-        {
-          'type': 'query',
-          'query': 'Your wounds'
-        },
-        {
-          'type': 'query',
-          'query': 'sad poems'
-        }
-      ];
       if (mounted) {
         setState(() {
-          _recentSearches = initialHistory;
+          _recentSearches = [];
         });
       }
-      await prefs.setString(key, jsonEncode(initialHistory));
     }
   }
 
@@ -799,7 +787,7 @@ class _SearchPageState extends State<SearchPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
+                        nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
                         style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       backgroundColor: const Color(0xFF993B3B),

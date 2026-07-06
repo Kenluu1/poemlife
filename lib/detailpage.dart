@@ -77,33 +77,43 @@ class _DetailPageState extends State<DetailPage> {
 
     if (fetched != null && mounted) {
       setState(() {
-        _comments = fetched.map((c) {
-          final List<dynamic> apiReplies = c['replies'] ?? [];
-          final List<dynamic> mappedApiReplies = apiReplies.map((r) {
-            return {
-              'id': r['id'],
-              'author': r['author'] != null && r['author'] is Map ? r['author']['username'] ?? 'Anonymous' : 'Anonymous',
-              'authorId': r['author'] != null && r['author'] is Map ? r['author']['id'] : null,
-              'time': r['date_created'] != null ? "${DateTime.parse(r['date_created']).day}/${DateTime.parse(r['date_created']).month}" : 'Just now',
-              'text': r['comment'] ?? r['text'] ?? '',
-              'avatar': r['author'] != null && r['author'] is Map && r['author']['image'] != null
-                  ? r['author']['image'].toString()
-                  : 'https://i.pravatar.cc/150?img=32',
-            };
-          }).toList();
+        _comments = fetched
+            .map((c) {
+              final List<dynamic> apiReplies = c['replies'] ?? [];
+              final List<dynamic> mappedApiReplies = apiReplies
+                  .map((r) {
+                    return {
+                      'id': r['id'],
+                      'author': r['author'] != null && r['author'] is Map ? r['author']['username'] ?? 'Anonymous' : 'Anonymous',
+                      'authorId': r['author'] != null && r['author'] is Map ? r['author']['id'] : null,
+                      'time': r['date_created'] != null ? "${DateTime.parse(r['date_created']).day}/${DateTime.parse(r['date_created']).month}" : 'Just now',
+                      'text': r['comment'] ?? r['text'] ?? '',
+                      'avatar': r['author'] != null && r['author'] is Map && r['author']['image'] != null
+                          ? r['author']['image'].toString()
+                          : 'https://i.pravatar.cc/150?img=32',
+                    };
+                  })
+                  .where((r) => r['author'] != null &&
+                      !(r['author'].toString().toLowerCase().contains('anonymous') ||
+                        r['author'].toString().toLowerCase().contains('anonymus')))
+                  .toList();
 
-          return {
-            'id': c['id'],
-            'author': c['author'] != null && c['author'] is Map ? c['author']['username'] ?? 'Anonymous' : 'Anonymous',
-            'authorId': c['author'] != null && c['author'] is Map ? c['author']['id'] : null,
-            'time': c['date_created'] != null ? "${DateTime.parse(c['date_created']).day}/${DateTime.parse(c['date_created']).month}" : 'Just now',
-            'text': c['comment'] ?? '',
-            'avatar': c['author'] != null && c['author'] is Map && c['author']['image'] != null
-                ? c['author']['image'].toString()
-                : 'https://i.pravatar.cc/150?img=32',
-            'replies': mappedApiReplies
-          };
-        }).toList();
+              return {
+                'id': c['id'],
+                'author': c['author'] != null && c['author'] is Map ? c['author']['username'] ?? 'Anonymous' : 'Anonymous',
+                'authorId': c['author'] != null && c['author'] is Map ? c['author']['id'] : null,
+                'time': c['date_created'] != null ? "${DateTime.parse(c['date_created']).day}/${DateTime.parse(c['date_created']).month}" : 'Just now',
+                'text': c['comment'] ?? '',
+                'avatar': c['author'] != null && c['author'] is Map && c['author']['image'] != null
+                    ? c['author']['image'].toString()
+                    : 'https://i.pravatar.cc/150?img=32',
+                'replies': mappedApiReplies
+              };
+            })
+            .where((c) => c['author'] != null &&
+                !(c['author'].toString().toLowerCase().contains('anonymous') ||
+                  c['author'].toString().toLowerCase().contains('anonymus')))
+            .toList();
       });
     } else if (mounted) {
       setState(() {
@@ -560,7 +570,7 @@ class _DetailPageState extends State<DetailPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  nextState ? "added to favourite page" : "remove from favourite",
+                  nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
                 backgroundColor: const Color(0xFFA33B3B),

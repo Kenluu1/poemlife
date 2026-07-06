@@ -346,7 +346,7 @@ class _HappinessPageState extends State<HappinessPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
+                        nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
                       ),
                       duration: const Duration(seconds: 1),
                     ),

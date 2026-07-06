@@ -47,9 +47,9 @@ class _SignInPageState extends State<SignInPage> {
                 alignment: Alignment.bottomCenter,
                 children: [
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 30),
+                    margin: const EdgeInsets.only(left: 30, right: 30, bottom: 25),
                     padding: const EdgeInsets.only(
-                        top: 30, left: 20, right: 20, bottom: 60),
+                        top: 30, left: 20, right: 20, bottom: 50),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -165,11 +165,11 @@ class _SignInPageState extends State<SignInPage> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
+                          height: 1000,
                           width: 20,
                           child: CircularProgressIndicator(
                             color: Colors.white,
-                            strokeWidth: 2,
+                            strokeWidth: 5,
                           ),
                         )
                             : const Text(
@@ -194,60 +194,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                 ),
               ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                child: Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10),
-                      child: Text("Or Sign In With", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  OutlinedButton.icon(
-                    // Tombol Google sudah diperbarui di sini
-                    onPressed: () {
-                      if (context.mounted) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomePage()),
-                        );
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      side: BorderSide(color: _primaryColor),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                    icon: Image.asset('assets/Google.png', width: 20),
-                    label: const Text("Google", style: TextStyle(color: Colors.black87)),
-                  ),
-                  const SizedBox(width: 15),
-
-                  OutlinedButton.icon(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      side: BorderSide(color: _primaryColor),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                    icon: const Icon(Icons.facebook, color: Colors.blue, size: 20),
-                    label: const Text("Facebook", style: TextStyle(color: Colors.black87)),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

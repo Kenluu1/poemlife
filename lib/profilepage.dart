@@ -29,6 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _nim = '';
   String _bio = 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
   String _avatar = '';
+  String _banner = '';
   int _followers = 0;
   int _following = 0;
   List<dynamic> _tabPoems = [];
@@ -57,9 +58,15 @@ class _ProfilePageState extends State<ProfilePage> {
     if (index == 0) {
       fetched = await ApiService().getPoems(type: 'user');
     } else if (index == 1) {
-      fetched = await ApiService().getPoems(type: 'draft');
-    } else if (index == 2) {
-      fetched = await ApiService().getPoems(type: 'empathy');
+      final list = await ApiService().getBookmarks();
+      fetched = (list ?? []).map((item) {
+        if (item['poem'] != null && item['poem'] is Map) {
+          final poemData = Map<String, dynamic>.from(item['poem'] as Map);
+          poemData['is_bookmarked'] = 1;
+          return poemData;
+        }
+        return item;
+      }).toList();
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -75,9 +82,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (mounted) {
       setState(() {
         _tabPoems = filtered;
-        if (index == 2) {
-          _empathyCount = filtered.length;
-        }
       });
     }
   }
@@ -100,6 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _bio = profile['bio'] ?? 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
           _empathyCount = profile['empathy'] ?? 0;
           _avatar = profile['image'] ?? '';
+          _banner = profile['banner'] ?? '';
           _followers = profile['followers'] ?? 0;
           _following = profile['following'] ?? 0;
           _isInitialLoading = false;
@@ -152,8 +157,10 @@ class _ProfilePageState extends State<ProfilePage> {
           width: double.infinity,
           decoration: BoxDecoration(
             color: skeletonGrey,
-            image: const DecorationImage(
-              image: AssetImage("assets/bannerbinus.png"),
+            image: DecorationImage(
+              image: _banner.isNotEmpty
+                  ? NetworkImage(_banner) as ImageProvider
+                  : const AssetImage("assets/bannerbinus.png") as ImageProvider,
               fit: BoxFit.cover,
             ),
           ),
@@ -177,11 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 Row(
                   children: [
-                    _buildCircularIcon(Icons.bookmark_border, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => DraftPage()));
-                    }),
-                    const SizedBox(width: 10),
-
                     _buildCircularMenu(),
                   ],
                 ),
@@ -212,21 +214,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildCircularIcon(IconData icon, VoidCallback onTap) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: Colors.black87, size: 20),
-        onPressed: onTap,
-        constraints: const BoxConstraints(),
-        padding: const EdgeInsets.all(8),
-      ),
-    );
-  }
 
   Widget _buildCircularMenu() {
     return Container(
@@ -330,11 +317,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildProfileTabItem(T.s("poems"), 0),
-          _buildProfileTabItem(T.s("privat"), 1),
-          _buildProfileTabItem(T.s("empathy"), 2),
+          const SizedBox(width: 15),
+          _buildProfileTabItem("Bookmark", 1),
         ],
       ),
     );
@@ -426,8 +413,8 @@ class _ProfilePageState extends State<ProfilePage> {
       } catch (_) {}
     }
 
-    final cardAuthor = (_activeTabIndex == 2) ? author : _username;
-    final String cardAvatar = (_activeTabIndex == 2)
+    final cardAuthor = (_activeTabIndex != 0) ? author : _username;
+    final String cardAvatar = (_activeTabIndex != 0)
         ? avatarUrl
         : (_avatar.isNotEmpty ? _avatar : 'https://i.pravatar.cc/150?img=10');
 
@@ -578,7 +565,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        nextState ? "added to favourite page" : "remove from favourite",
+                        nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
                       ),
                       duration: const Duration(seconds: 1),
                     ),
@@ -602,8 +589,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildEmptyState() {
     String currentTabLabel = "";
     if (_activeTabIndex == 0) currentTabLabel = T.s("poems");
-    if (_activeTabIndex == 1) currentTabLabel = T.s("privat");
-    if (_activeTabIndex == 2) currentTabLabel = T.s("empathy");
+    if (_activeTabIndex == 1) currentTabLabel = "Bookmark";
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -682,10 +668,10 @@ class _ProfilePageState extends State<ProfilePage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(width: 80, height: 35, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
-                  Container(width: 80, height: 35, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
+                  const SizedBox(width: 15),
                   Container(width: 80, height: 35, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
                 ],
               ),

@@ -166,6 +166,8 @@ class T {
       'posting': 'Posting...',
       'search_landing_title': 'Looking for someone?',
       'search_landing_desc': 'Search for a username or poem title to start reading.',
+      'added_to_bookmark': 'Added to bookmark',
+      'removed_from_bookmark': 'Removed from bookmark',
     },
     'id': {
       'language_name': 'Bahasa Indonesia',
@@ -311,6 +313,8 @@ class T {
       'posting': 'Mengirimkan...',
       'search_landing_title': 'Mencari seseorang?',
       'search_landing_desc': 'Cari nama pengguna atau judul puisi untuk mulai membaca.',
+      'added_to_bookmark': 'Menambahkan ke bookmark',
+      'removed_from_bookmark': 'Dihapus dari bookmark',
     }
   };
 

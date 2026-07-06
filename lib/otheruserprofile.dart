@@ -115,30 +115,6 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
     }
   }
 
-  Future<void> _onTabTapped(int index) async {
-    if (index == _activeTabIndex) return;
-
-    setState(() {
-      _isTabLoading = true;
-      _activeTabIndex = index;
-    });
-
-    final startTime = DateTime.now();
-
-    await _fetchTabPoems();
-
-    final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    final remaining = 2000 - elapsed;
-    if (remaining > 0) {
-      await Future.delayed(Duration(milliseconds: remaining));
-    }
-
-    if (mounted) {
-      setState(() {
-        _isTabLoading = false;
-      });
-    }
-  }
 
   Future<void> _toggleFollow() async {
     if (_isFollowTransitioning) return;
@@ -472,8 +448,14 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: skeletonGrey,
-                image: const DecorationImage(
-                  image: AssetImage("assets/bannerbinus.png"),
+                image: DecorationImage(
+                  image:
+                      (profileData?['banner'] != null &&
+                          profileData!['banner'].toString().isNotEmpty)
+                      ? NetworkImage(profileData['banner'].toString())
+                            as ImageProvider
+                      : const AssetImage("assets/bannerbinus.png")
+                            as ImageProvider,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -617,48 +599,22 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _onTabTapped(0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _activeTabIndex == 0 ? maroon : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: maroon, width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Poems",
-                        style: TextStyle(
-                          color: _activeTabIndex == 0 ? Colors.white : maroon,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
+              GestureDetector(
+                onTap: () {},
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: maroon,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: maroon, width: 1.5),
                   ),
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _onTabTapped(1),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _activeTabIndex == 1 ? maroon : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: maroon, width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Empathy",
-                        style: TextStyle(
-                          color: _activeTabIndex == 1 ? Colors.white : maroon,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                  child: const Center(
+                    child: Text(
+                      "Poems",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -948,8 +904,8 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
                     SnackBar(
                       content: Text(
                         nextState
-                            ? "added to favourite page"
-                            : "remove from favourite",
+                            ? T.s("added_to_bookmark")
+                            : T.s("removed_from_bookmark"),
                       ),
                       duration: const Duration(seconds: 1),
                     ),
@@ -1100,23 +1056,12 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
             children: [
-              Expanded(
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+              Container(
+                width: 80,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
             ],

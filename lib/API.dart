@@ -454,6 +454,8 @@ class ApiService {
     required String nim,
     required String email,
     required String bio,
+    String? image,
+    String? banner,
   }) async {
     final url = Uri.parse('$baseUrl/user/update');
     try {
@@ -466,6 +468,8 @@ class ApiService {
           'nim': nim,
           'email': email,
           'bio': bio,
+          if (image != null) 'image': image,
+          if (banner != null) 'banner': banner,
         }),
       );
 

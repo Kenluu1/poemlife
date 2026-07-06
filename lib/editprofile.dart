@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'translation.dart';
@@ -29,6 +32,43 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String _loadedEmail = "";
   String _loadedBio = "";
   String _avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80";
+  String _bannerUrl = "";
+
+  File? _avatarFile;
+  File? _bannerFile;
+  String? _selectedAvatarBase64;
+  String? _selectedBannerBase64;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage(bool isAvatar) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final File file = File(image.path);
+        final bytes = await file.readAsBytes();
+        final base64String = 'data:image/${image.name.split('.').last};base64,${base64Encode(bytes)}';
+
+        setState(() {
+          _hasChanges = true;
+          if (isAvatar) {
+            _avatarFile = file;
+            _selectedAvatarBase64 = base64String;
+          } else {
+            _bannerFile = file;
+            _selectedBannerBase64 = base64String;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+    }
+  }
 
   late TextEditingController _usernameController;
   late TextEditingController _nimController;
@@ -74,6 +114,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _avatarUrl = (profile['image'] != null && profile['image'].toString().isNotEmpty)
               ? profile['image'].toString()
               : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80';
+          _bannerUrl = (profile['banner'] != null && profile['banner'].toString().isNotEmpty)
+              ? profile['banner'].toString()
+              : '';
 
           _usernameController.text = _loadedUsername;
           _nimController.text = _loadedNIM;
@@ -191,6 +234,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       nim: _nimController.text.trim(),
       email: _emailController.text.trim(),
       bio: _bioController.text.trim(),
+      image: _selectedAvatarBase64,
+      banner: _selectedBannerBase64,
     );
 
     if (mounted) {
@@ -308,19 +353,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   color: Colors.grey[300],
-                  /*
-                  image: const DecorationImage(
-                    image: AssetImage('assets/cover_placeholder.png'),
+                  image: DecorationImage(
+                    image: _bannerFile != null
+                        ? FileImage(_bannerFile!) as ImageProvider
+                        : (_bannerUrl.isNotEmpty
+                            ? NetworkImage(_bannerUrl) as ImageProvider
+                            : const AssetImage('assets/bannerbinus.png') as ImageProvider),
                     fit: BoxFit.cover,
                   ),
-                  */
                 ),
-                child: const Center(child: Text("Cover Image")), // Hapus ini kalau pakai gambar asli
               ),
               Positioned(
                 bottom: 8,
                 right: 8,
-                child: _buildCameraButtonWidget(),
+                child: GestureDetector(
+                  onTap: () => _pickImage(false),
+                  child: _buildCameraButtonWidget(),
+                ),
               ),
             ],
           ),
@@ -334,13 +383,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   child: CircleAvatar(
                     radius: constraints.maxWidth * 0.15 - 4,
                     backgroundColor: Colors.grey[400],
-                    backgroundImage: NetworkImage(_avatarUrl),
+                    backgroundImage: _avatarFile != null
+                        ? FileImage(_avatarFile!) as ImageProvider
+                        : NetworkImage(_avatarUrl) as ImageProvider,
                   ),
                 ),
                 Positioned(
                   bottom: 0,
                   right: 0,
-                  child: _buildCameraButtonWidget(),
+                  child: GestureDetector(
+                    onTap: () => _pickImage(true),
+                    child: _buildCameraButtonWidget(),
+                  ),
                 ),
               ],
             ),
