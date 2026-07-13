@@ -6,11 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static final ValueNotifier<int> followEvents = ValueNotifier<int>(0);
 
-  // Gunakan http://localhost:3005/api jika menggunakan Emulator Android bawaan.
-  // Gunakan IP lokal komputer (seperti 10.203.212.49) jika menggunakan HP fisik.
-  static const String baseUrl = 'http://localhost:3005/api';
+  static const String baseUrl = 'http://103.230.81.76:3005/api';
 
-  // Helper untuk mendapatkan header request, menyertakan token jika ada
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -20,7 +17,12 @@ class ApiService {
     };
   }
 
-  Future<bool> registerUser(String username, String password, String nim, String email) async {
+  Future<String?> registerUser(
+    String username,
+    String password,
+    String nim,
+    String email,
+  ) async {
     final url = Uri.parse('$baseUrl/auth/register');
     try {
       final response = await http.post(
@@ -34,12 +36,12 @@ class ApiService {
         }),
       );
 
+      final responseData = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
         print('Register Sukses: $responseData');
-        
 
-        if (responseData['data'] != null && responseData['data']['login_token'] != null) {
+        if (responseData['data'] != null &&
+            responseData['data']['login_token'] != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', responseData['data']['login_token']);
           if (responseData['data']['user'] != null) {
@@ -49,14 +51,14 @@ class ApiService {
             await prefs.setString('email', user['email'] ?? '');
           }
         }
-        return true;
+        return null;
       } else {
         print('Register Gagal: ${response.body}');
-        return false;
+        return responseData['message'] ?? 'Registrasi gagal. Coba lagi.';
       }
     } catch (e) {
       print('Error Register: $e');
-      return false;
+      return 'Terjadi kesalahan koneksi.';
     }
   }
 
@@ -67,21 +69,19 @@ class ApiService {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-        }),
+        body: jsonEncode({'username': username, 'password': password}),
       );
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         print('Login Sukses: $responseData');
 
-        if (responseData['data'] != null && responseData['data']['token'] != null) {
+        if (responseData['data'] != null &&
+            responseData['data']['token'] != null) {
           String token = responseData['data']['token'];
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
-          
+
           if (responseData['data']['user'] != null) {
             final user = responseData['data']['user'];
             await prefs.setInt('userId', user['id']);
@@ -102,15 +102,21 @@ class ApiService {
     }
   }
 
-
-  Future<List<dynamic>> getPoems({String? type, int? categoryId, String? search, int? targetUserId}) async {
+  Future<List<dynamic>> getPoems({
+    String? type,
+    int? categoryId,
+    String? search,
+    int? targetUserId,
+  }) async {
     final Map<String, String> queryParams = {};
     if (type != null) queryParams['t'] = type;
     if (categoryId != null) queryParams['c'] = categoryId.toString();
     if (search != null) queryParams['q'] = search;
     if (targetUserId != null) queryParams['u'] = targetUserId.toString();
 
-    final uri = Uri.parse('$baseUrl/poem/').replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '$baseUrl/poem/',
+    ).replace(queryParameters: queryParams);
     try {
       final headers = await _getHeaders();
       final response = await http.get(uri, headers: headers);
@@ -128,7 +134,6 @@ class ApiService {
       return [];
     }
   }
-
 
   Future<Map<String, dynamic>?> getPoemDetail(int poemId) async {
     final url = Uri.parse('$baseUrl/poem/$poemId');
@@ -148,7 +153,6 @@ class ApiService {
       return null;
     }
   }
-
 
   Future<bool> createPoem({
     required String title,
@@ -182,7 +186,6 @@ class ApiService {
     }
   }
 
-
   Future<bool> toggleBookmark(int poemId, bool currentlyBookmarked) async {
     final url = currentlyBookmarked
         ? Uri.parse('$baseUrl/bookmark/delete/$poemId')
@@ -210,7 +213,6 @@ class ApiService {
     }
   }
 
-
   Future<Map<String, dynamic>?> getUserProfile(int userId) async {
     final url = Uri.parse('$baseUrl/user/$userId');
     try {
@@ -235,7 +237,9 @@ class ApiService {
     if (filter != null) queryParams['filter'] = filter;
     if (limit != null) queryParams['limit'] = limit.toString();
 
-    final url = Uri.parse('$baseUrl/user/top-writers').replace(queryParameters: queryParams);
+    final url = Uri.parse(
+      '$baseUrl/user/top-writers',
+    ).replace(queryParameters: queryParams);
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
@@ -272,8 +276,30 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> getSongs({int? categoryId}) async {
+    final queryParams = categoryId != null ? '?category_id=$categoryId' : '';
+    final url = Uri.parse('$baseUrl/misc/songs$queryParams');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          return responseData['data'] as List<dynamic>;
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getSongs: $e');
+      return [];
+    }
+  }
+
   Future<List<dynamic>> searchUsers(String query) async {
-    final url = Uri.parse('$baseUrl/user/search/query?q=${Uri.encodeComponent(query)}');
+    final url = Uri.parse(
+      '$baseUrl/user/search/query?q=${Uri.encodeComponent(query)}',
+    );
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
@@ -360,7 +386,11 @@ class ApiService {
     }
   }
 
-  Future<bool> createComment(int poemId, String commentText, {int? parentCommentId}) async {
+  Future<bool> createComment(
+    int poemId,
+    String commentText, {
+    int? parentCommentId,
+  }) async {
     final url = Uri.parse('$baseUrl/comment/create');
     try {
       final headers = await _getHeaders();
@@ -411,10 +441,7 @@ class ApiService {
       final response = await http.post(
         url,
         headers: headers,
-        body: jsonEncode({
-          'poem_id': poemId,
-          'reaction_id': reactionId,
-        }),
+        body: jsonEncode({'poem_id': poemId, 'reaction_id': reactionId}),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -434,9 +461,7 @@ class ApiService {
       final response = await http.patch(
         url,
         headers: headers,
-        body: jsonEncode({
-          'password': newPassword,
-        }),
+        body: jsonEncode({'password': newPassword}),
       );
 
       if (response.statusCode == 200) {
@@ -488,13 +513,17 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
-      print('DEBUG getNotifications: status=${response.statusCode}, body=${response.body}');
+      print(
+        'DEBUG getNotifications: status=${response.statusCode}, body=${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           final List<dynamic> list = responseData['data'];
-          return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+          return list
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
         }
       }
       return null;
@@ -520,6 +549,5 @@ class ApiService {
     }
   }
 }
-
 
 class AuthService extends ApiService {}

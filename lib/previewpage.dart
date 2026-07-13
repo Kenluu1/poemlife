@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:poemlife/addcategoriespage.dart';
 import 'package:poemlife/publicationpage.dart';
 import 'package:poemlife/detailpreviewpage.dart';
 import 'translation.dart';
@@ -8,11 +7,13 @@ import 'translation.dart';
 class PreviewPage extends StatefulWidget {
   final String title;
   final String content;
+  final Map<String, dynamic> selectedCategory;
 
   const PreviewPage({
     super.key,
     required this.title,
     required this.content,
+    required this.selectedCategory,
   });
 
   @override
@@ -28,6 +29,7 @@ class _PreviewPageState extends State<PreviewPage> {
   void initState() {
     super.initState();
     _loadUsername();
+    _selectedCategories = [widget.selectedCategory];
   }
 
   Future<void> _loadUsername() async {
@@ -162,22 +164,8 @@ class _PreviewPageState extends State<PreviewPage> {
                     _selectedCategories.isEmpty
                         ? T.s("add_category")
                         : _selectedCategories.map((c) => T.s(c['name'].toString().toLowerCase())).join(', '),
-                    T.s("see_all"),
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddCategoriesPage(
-                            initialCategories: _selectedCategories,
-                          ),
-                        ),
-                      );
-                      if (result != null && result is List<Map<String, dynamic>>) {
-                        setState(() {
-                          _selectedCategories = result;
-                        });
-                      }
-                    },
+                    "",
+                    onTap: null,
                   ),
                   Divider(height: 1, color: Colors.red[100]),
                   _buildSettingRow(

@@ -6,6 +6,7 @@ import 'searchpage.dart';
 import 'notificationpage.dart';
 import 'profilepage.dart';
 import 'addpage.dart';
+import 'categorypage.dart';
 import 'sadnesspage.dart';
 import 'happinesspage.dart';
 import 'angrypage.dart';
@@ -330,7 +331,7 @@ class _HomePageState extends State<HomePage> {
 
           GestureDetector(
             onTap: () async {
-              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPage()));
+              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryPage()));
               if (result != null && result is Map<String, dynamic>) {
                 _startPostingPoem(result);
               }

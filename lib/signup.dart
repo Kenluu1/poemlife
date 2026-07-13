@@ -121,21 +121,19 @@ class _SignUpPageState extends State<SignUpPage> {
                               _isLoading = true;
                             });
 
-                            bool isSuccess = await AuthService().registerUser(
+                            String? errorMessage = await AuthService().registerUser(
                               _usernameController.text,
                               _passwordController.text,
                               _nimController.text,
                               _emailController.text,
                             );
 
-
                             setState(() {
                               _isLoading = false;
                             });
 
-                            if (isSuccess) {
+                            if (errorMessage == null) {
                               if (context.mounted) {
-
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Registrasi sukses! Silakan Sign In.'),
@@ -150,10 +148,9 @@ class _SignUpPageState extends State<SignUpPage> {
                               }
                             } else {
                               if (context.mounted) {
-
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Registrasi gagal. Coba lagi.'),
+                                  SnackBar(
+                                    content: Text(errorMessage),
                                     backgroundColor: Colors.red,
                                   ),
                                 );

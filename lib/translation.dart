@@ -168,6 +168,16 @@ class T {
       'search_landing_desc': 'Search for a username or poem title to start reading.',
       'added_to_bookmark': 'Added to bookmark',
       'removed_from_bookmark': 'Removed from bookmark',
+      'feel_right_now_title': 'How Do You Feel Right Now?',
+      'feel_right_now_desc': 'Express what you feel through poem, choose what feeling describe you best.',
+      'save_draft_question': 'Save a draft?',
+      'dont_save': "Don't Save",
+      'draft_save_success': 'Draft saved successfully!',
+      'draft_save_fail': 'Failed to save draft.',
+      'untitled': 'Untitled',
+      'gemini_coming_soon': 'Gemini AI features are coming soon!',
+      'default_poem_title': 'Your Wounds',
+      'default_poem_content': "Time doesn't heal wounds\nto make you forget.\n\nIt doesn't heal wounds to\nerase the memories.",
     },
     'id': {
       'language_name': 'Bahasa Indonesia',
@@ -315,6 +325,16 @@ class T {
       'search_landing_desc': 'Cari nama pengguna atau judul puisi untuk mulai membaca.',
       'added_to_bookmark': 'Menambahkan ke bookmark',
       'removed_from_bookmark': 'Dihapus dari bookmark',
+      'feel_right_now_title': 'Bagaimana Perasaanmu Saat Ini?',
+      'feel_right_now_desc': 'Ekspresikan perasaanmu melalui puisi, pilihlah perasaan yang paling menggambarkan dirimu.',
+      'save_draft_question': 'Simpan draf?',
+      'dont_save': 'Jangan Simpan',
+      'draft_save_success': 'Puisi disimpan sebagai draf!',
+      'draft_save_fail': 'Gagal menyimpan draf.',
+      'untitled': 'Tanpa Judul',
+      'gemini_coming_soon': 'Fitur Gemini AI akan segera hadir!',
+      'default_poem_title': 'Luka-Luka Anda',
+      'default_poem_content': "Waktu tidak menyembuhkan luka\nuntuk membuatmu lupa.\n\nIa tidak menyembuhkan luka untuk\nmenghapus kenangan.",
     }
   };
 
