@@ -7,7 +7,19 @@ import 'previewpage.dart';
 
 class AddPage extends StatefulWidget {
   final Map<String, dynamic> selectedCategory;
-  const AddPage({Key? key, required this.selectedCategory}) : super(key: key);
+  final String? initialTitle;
+  final String? initialContent;
+  final int? editPoemId;
+  final bool autoPushPreview;
+
+  const AddPage({
+    Key? key,
+    required this.selectedCategory,
+    this.initialTitle,
+    this.initialContent,
+    this.editPoemId,
+    this.autoPushPreview = false,
+  }) : super(key: key);
 
   @override
   _AddPageState createState() => _AddPageState();
@@ -23,7 +35,7 @@ class _AddPageState extends State<AddPage> {
   bool _isNextLoading = false;
 
   bool _isItalic = false;
-  TextAlign _textAlign = TextAlign.center;
+  TextAlign _textAlign = TextAlign.left;
   List<dynamic> _wordBank = [];
 
   bool _isReadOnly = false;
@@ -43,6 +55,14 @@ class _AddPageState extends State<AddPage> {
     final int catId = widget.selectedCategory['id'] ?? 1;
     _songs = [];
     _currentSongIndex = 0;
+
+    if (widget.initialTitle != null) {
+      _titleController.text = widget.initialTitle!;
+    }
+    if (widget.initialContent != null) {
+      _contentController.text = T.getCleanContent(widget.initialContent!);
+      _textAlign = T.getTextAlign(widget.initialContent!);
+    }
     
     _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((event) {
       _onNextSong();
@@ -53,13 +73,20 @@ class _AddPageState extends State<AddPage> {
     _undoStack.add(_contentController.text);
     _contentController.addListener(_onContentChanged);
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() {
-          _isInitialLoading = false;
-        });
-      }
-    });
+    if (widget.autoPushPreview) {
+      _isInitialLoading = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _onNextPressed(immediate: true);
+      });
+    } else {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          setState(() {
+            _isInitialLoading = false;
+          });
+        }
+      });
+    }
     _loadWordBank();
   }
 
@@ -76,7 +103,9 @@ class _AddPageState extends State<AddPage> {
         setState(() {
           _songs = filteredSongs;
         });
-        _playSongAtIndex(0);
+        if (!widget.autoPushPreview) {
+          _playSongAtIndex(0);
+        }
       }
     } catch (e) {
       debugPrint('Error fetching songs from API: $e');
@@ -354,6 +383,140 @@ class _AddPageState extends State<AddPage> {
     );
   }
 
+  Future<void> _insertAiText(String word) async {
+    final text = _contentController.text;
+    final selection = _contentController.selection;
+    String insertion = word;
+
+    // Check if we need to add a space at the beginning of the insertion
+    if (text.isNotEmpty &&
+        !text.endsWith(' ') &&
+        !text.endsWith('\n') &&
+        !word.startsWith(' ')) {
+      insertion = ' ' + word;
+    }
+
+    // Determine the base index of where we are inserting
+    int insertIndex = selection.start >= 0 ? selection.start : text.length;
+    int selectionEnd = selection.end >= 0 ? selection.end : text.length;
+
+    // Set editing mode to read-only during typewriter animation so user does not interrupt it
+    setState(() {
+      _isReadOnly = true;
+    });
+
+    String currentTextBefore = text.substring(0, insertIndex);
+    String currentTextAfter = text.substring(selectionEnd);
+
+    // Let's type character by character
+    for (int i = 0; i < insertion.length; i++) {
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 50)); // typing speed: 50ms per character
+      
+      final currentInsertion = insertion.substring(0, i + 1);
+      final newText = currentTextBefore + currentInsertion + currentTextAfter;
+      
+      _contentController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(
+          offset: insertIndex + currentInsertion.length,
+        ),
+      );
+    }
+
+    // Reset read-only mode
+    if (mounted) {
+      setState(() {
+        _isReadOnly = false;
+      });
+    }
+  }
+
+  Future<void> _generateAiPoem() async {
+    final text = _contentController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(T.lang == 'id' ? 'Silakan tulis sesuatu terlebih dahulu.' : 'Please write something first.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show custom loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Dialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    color: Color(0xFF993B3B),
+                  ),
+                  const SizedBox(width: 20),
+                  Text(
+                    T.lang == 'id' ? 'Menghasilkan puisi...' : 'Generating poem...',
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final generated = await ApiService().generatePoem(text);
+      
+      // Dismiss progress dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (generated != null && generated.isNotEmpty) {
+        await _insertAiText(generated);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(T.lang == 'id' ? 'Gagal menghasilkan kelanjutan puisi.' : 'Failed to generate continuation.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // pop the dialog
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(T.lang == 'id' ? 'Terjadi kesalahan.' : 'An error occurred.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _playerCompleteSubscription?.cancel();
@@ -424,20 +587,37 @@ class _AddPageState extends State<AddPage> {
                       } else {
                         alignPrefix = '[align:center]';
                       }
-                      bool success = await ApiService().createPoem(
-                        title: _titleController.text.isEmpty
-                            ? T.s('untitled')
-                            : _titleController.text,
-                        content:
-                            alignPrefix +
-                            (_contentController.text.isEmpty
-                                ? T.s('default_poem_content')
-                                : _contentController.text),
-                        categoryId:
-                            widget.selectedCategory['id'] ??
-                            1, // Selected category
-                        published: 0, // 0 = draft
-                      );
+                      bool success;
+                      if (widget.editPoemId != null) {
+                        success = await ApiService().updatePoem(
+                          poemId: widget.editPoemId!,
+                          title: _titleController.text.isEmpty
+                              ? T.s('untitled')
+                              : _titleController.text,
+                          content:
+                              alignPrefix +
+                              (_contentController.text.isEmpty
+                                  ? T.s('default_poem_content')
+                                  : _contentController.text),
+                          categoryId:
+                              widget.selectedCategory['id'] ?? 1,
+                          published: 0,
+                        );
+                      } else {
+                        success = await ApiService().createPoem(
+                          title: _titleController.text.isEmpty
+                              ? T.s('untitled')
+                              : _titleController.text,
+                          content:
+                              alignPrefix +
+                              (_contentController.text.isEmpty
+                                  ? T.s('default_poem_content')
+                                  : _contentController.text),
+                          categoryId:
+                              widget.selectedCategory['id'] ?? 1,
+                          published: 0,
+                        );
+                      }
                       if (context.mounted) {
                         Navigator.pop(context); // Pop loading
                         Navigator.pop(context); // Pop AddPage
@@ -497,12 +677,22 @@ class _AddPageState extends State<AddPage> {
         false;
   }
 
-  void _onNextPressed() async {
+  void _onNextPressed({bool immediate = false}) async {
+    // Stop the audio player
+    await _audioPlayer.stop();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+      });
+    }
+
     setState(() {
       _isNextLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    if (!immediate) {
+      await Future.delayed(const Duration(seconds: 2));
+    }
 
     if (mounted) {
       setState(() {
@@ -531,9 +721,16 @@ class _AddPageState extends State<AddPage> {
                     ? T.s('default_poem_content')
                     : _contentController.text),
             selectedCategory: widget.selectedCategory,
+            editPoemId: widget.editPoemId,
           ),
         ),
       );
+
+      // When popping back to AddPage, resume the song!
+      if (mounted) {
+        _playSongAtIndex(_currentSongIndex);
+      }
+
       if (result != null && result is Map<String, dynamic> && mounted) {
         Navigator.pop(context, result);
       }
@@ -583,7 +780,7 @@ class _AddPageState extends State<AddPage> {
                 ),
                 const SizedBox(width: 15),
                 TextButton(
-                  onPressed: _showLoading ? null : _onNextPressed,
+                  onPressed: _showLoading ? null : () => _onNextPressed(),
                   child: Text(
                     T.s('next'),
                     style: TextStyle(
@@ -694,22 +891,14 @@ class _AddPageState extends State<AddPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // Button 1: Gemini AI (placeholder)
+            // Button 1: Gemini AI
             IconButton(
               icon: Image.asset(
                 'assets/aibutton.png',
                 width: 24,
                 height: 24,
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(T.s('gemini_coming_soon')),
-                    duration: const Duration(seconds: 1),
-                  ),
-                );
-              },
+              onPressed: _generateAiPoem,
             ),
             // Button 2: Word Bank
             IconButton(
