@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'package:poemlife/detailpage.dart';
 import 'translation.dart';
@@ -27,24 +28,23 @@ class _FavoritePageState extends State<FavoritePage> {
     setState(() {
       _isLoading = true;
     });
-    final list = await ApiService().getBookmarks();
+    
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getInt('userId');
+    
+    final list = await ApiService().getPoems(type: 'empathy');
     if (mounted) {
       setState(() {
-        _favoritePoems = (list ?? []).map((item) {
-          if (item['poem'] != null && item['poem'] is Map) {
-            final poemData = Map<String, dynamic>.from(item['poem'] as Map);
-            // Also preserve the bookmark status
-            poemData['is_bookmarked'] = 1;
-            return poemData;
-          }
-          return item;
-        }).toList();
+        _favoritePoems = (list ?? [])
+            .where((p) => p['is_liked'] == true && p['authorId'] != currentUserId)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _removeBookmark(int poemId) async {
+  Future<void> _toggleLike(int poemId) async {
     setState(() {
       _favoritePoems.removeWhere((p) => p['id'] == poemId);
     });
@@ -63,7 +63,7 @@ class _FavoritePageState extends State<FavoritePage> {
       ),
     );
 
-    await ApiService().toggleBookmark(poemId, true);
+    await ApiService().toggleReaction(poemId, 1);
   }
 
   Widget _buildLoadingView() {
@@ -160,69 +160,69 @@ class _FavoritePageState extends State<FavoritePage> {
         final lines = rawContent.split('\n');
         final contentSnippet = lines.take(4).join('\n');
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.red.shade100, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 5,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(avatarUrl),
-                    backgroundColor: Colors.grey[200],
-                    onBackgroundImageError: (_, __) {},
-                    child: const Icon(Icons.person, size: 20, color: Colors.white),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(authorName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      Text(dateStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
-              const SizedBox(height: 12),
-              Text(
-                contentSnippet,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[800],
-                  fontSize: 14,
-                  height: 1.5,
+        return GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetailPage(
+                  poem: poem,
                 ),
               ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DetailPage(
-                        poem: poem,
-                      ),
+            );
+            _loadFavorites();
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.red.shade100, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundImage: NetworkImage(avatarUrl),
+                      backgroundColor: Colors.grey[200],
+                      onBackgroundImageError: (_, __) {},
+                      child: const Icon(Icons.person, size: 20, color: Colors.white),
                     ),
-                  );
-                  _loadFavorites();
-                },
-                child: Text(
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(authorName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        Text(dateStr, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'serif', color: Colors.black)),
+                const SizedBox(height: 12),
+                Text(
+                  contentSnippet,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
                   T.s("read_more"),
                   style: TextStyle(
                     color: maroon,
@@ -230,39 +230,39 @@ class _FavoritePageState extends State<FavoritePage> {
                     fontSize: 13,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.language, size: 18, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      const SizedBox(width: 16),
-                      Icon(Icons.favorite, size: 18, color: maroon),
-                      const SizedBox(width: 4),
-                      Text(loveCount, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      const SizedBox(width: 16),
-                      Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(commentCount, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      Icons.bookmark,
-                      size: 20,
-                      color: maroon,
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(width: 16),
+                        Icon(Icons.favorite, size: 18, color: maroon),
+                        const SizedBox(width: 4),
+                        Text(loveCount, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(width: 16),
+                        Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(commentCount, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
                     ),
-                    onPressed: () => _removeBookmark(poem['id']),
-                  ),
-                ],
-              ),
-            ],
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.bookmark,
+                        size: 20,
+                        color: maroon,
+                      ),
+                      onPressed: () => _toggleLike(poem['id']),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

@@ -112,7 +112,7 @@ class _PopularPoemsPageState extends State<PopularPoemsPage> {
         : 'https://i.pravatar.cc/150?img=${index + 12}';
 
     final String dateStr = _getRelativeDate(poem['date_created']);
-    final rawContent = poem['content'] ?? '';
+    final rawContent = T.getCleanContent(poem['content'] ?? '');
     final lines = rawContent.split('\n');
     final contentSnippet = lines.take(3).join('\n');
 

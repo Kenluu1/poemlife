@@ -39,9 +39,9 @@ class _DetailPageState extends State<DetailPage> {
   void initState() {
     super.initState();
     _poem = Map<String, dynamic>.from(widget.poem);
-    _isLiked = _poem['is_liked'] == true;
+    _isLiked = _poem['is_liked'] == true || _poem['has_love_reaction'] == true || _poem['has_love_reaction'] == 1;
     _loveCount = int.tryParse(_poem['love_count']?.toString() ?? '0') ?? 0;
-    _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1;
+    _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1 || _poem['isBookmark'] == 1;
     _loadUserProfile();
     _loadComments();
     _loadPoemDetail();
@@ -55,9 +55,9 @@ class _DetailPageState extends State<DetailPage> {
       if (detail != null && mounted) {
         setState(() {
           _poem = detail;
-          _isLiked = _poem['is_liked'] == true;
+          _isLiked = _poem['is_liked'] == true || _poem['has_love_reaction'] == true || _poem['has_love_reaction'] == 1;
           _loveCount = int.tryParse(_poem['love_count']?.toString() ?? '0') ?? 0;
-          _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1;
+          _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1 || _poem['isBookmark'] == 1;
         });
         _loadFollowStatus();
       }
@@ -416,6 +416,16 @@ class _DetailPageState extends State<DetailPage> {
         return T.s("happiness");
       case 3:
         return T.s("angry");
+      case 4:
+        return T.s("love");
+      case 5:
+        return T.s("longing");
+      case 6:
+        return T.s("loneliness");
+      case 7:
+        return T.s("memories");
+      case 8:
+        return T.s("disappointment");
       default:
         return T.s("poem");
     }
@@ -845,8 +855,11 @@ class _DetailPageState extends State<DetailPage> {
             ? int.tryParse(_poem['author']['id'].toString())
             : null);
 
+    final parsedCategoryIds = T.getCategoriesFromContent(content);
     List<dynamic> categoriesList = [];
-    if (_poem['categories'] != null) {
+    if (parsedCategoryIds.isNotEmpty) {
+      categoriesList = parsedCategoryIds.map((id) => {'name': _getCategoryName(id)}).toList();
+    } else if (_poem['categories'] != null) {
       categoriesList = _poem['categories'] as List<dynamic>;
     } else {
       categoriesList = [

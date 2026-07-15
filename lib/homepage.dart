@@ -75,12 +75,23 @@ class _HomePageState extends State<HomePage> {
       _postingStatus = 'loading';
     });
 
-    bool success = await ApiService().createPoem(
-      title: payload['title'],
-      content: payload['content'],
-      categoryId: payload['categoryId'],
-      published: payload['published'],
-    );
+    bool success;
+    if (payload['editPoemId'] != null) {
+      success = await ApiService().updatePoem(
+        poemId: payload['editPoemId'],
+        title: payload['title'],
+        content: payload['content'],
+        categoryId: payload['categoryId'],
+        published: payload['published'],
+      );
+    } else {
+      success = await ApiService().createPoem(
+        title: payload['title'],
+        content: payload['content'],
+        categoryId: payload['categoryId'],
+        published: payload['published'],
+      );
+    }
 
     if (mounted) {
       if (success) {

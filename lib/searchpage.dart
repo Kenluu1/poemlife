@@ -615,7 +615,7 @@ class _SearchPageState extends State<SearchPage> {
       } catch (_) {}
     }
 
-    final rawContent = poem['content'] ?? '';
+    final rawContent = T.getCleanContent(poem['content'] ?? '');
     final lines = rawContent.split('\n');
     final contentSnippet = lines.take(3).join('\n');
 

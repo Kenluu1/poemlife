@@ -86,7 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  int _empathyCount = 0;
+  int _userPoemsCount = 0;
 
   Future<void> _loadInitialData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -95,6 +95,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (savedUserId != null) {
       final profile = await ApiService().getUserProfile(savedUserId);
+      final userPoems = await ApiService().getPoems(type: 'user');
       await _fetchTabPoems(_activeTabIndex);
       if (profile != null && mounted) {
         setState(() {
@@ -102,7 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _fullname = profile['fullname'] ?? '';
           _nim = profile['nim'] ?? '';
           _bio = profile['bio'] ?? 'Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.';
-          _empathyCount = profile['empathy'] ?? 0;
+          _userPoemsCount = userPoems.length;
           _avatar = profile['image'] ?? '';
           _banner = profile['banner'] ?? '';
           _followers = profile['followers'] ?? 0;
@@ -297,7 +298,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           _buildStatItem(_followers.toString(), T.s("followers")),
           _buildStatItem(_following.toString(), T.s("following")),
-          _buildStatItem(_empathyCount.toString(), T.s("empathy")),
+          _buildStatItem(_userPoemsCount.toString(), T.s("poems")),
         ],
       ),
     );

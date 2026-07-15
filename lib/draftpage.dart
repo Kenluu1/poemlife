@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/API.dart';
+import 'package:poemlife/addpage.dart';
 import 'translation.dart';
 
 class DraftPage extends StatefulWidget {
@@ -94,6 +95,29 @@ class _DraftPageState extends State<DraftPage> {
     }
   }
 
+  String _getCategoryName(int? categoryId) {
+    switch (categoryId) {
+      case 1:
+        return 'Sadness';
+      case 2:
+        return 'Happiness';
+      case 3:
+        return 'Anger';
+      case 4:
+        return 'Love';
+      case 5:
+        return 'Longing';
+      case 6:
+        return 'Loneliness';
+      case 7:
+        return 'Memories';
+      case 8:
+        return 'Disappointment';
+      default:
+        return 'Sadness';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,55 +185,103 @@ class _DraftPageState extends State<DraftPage> {
       itemCount: _drafts.length,
       itemBuilder: (context, index) {
         final draft = _drafts[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.red[200]!, width: 1.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDate(draft["date_created"]),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+        return GestureDetector(
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddPage(
+                  selectedCategory: {
+                    'id': draft['category_id'] ?? 1,
+                    'name': _getCategoryName(draft['category_id']),
+                  },
+                  initialTitle: draft['title'],
+                  initialContent: draft['content'],
+                  editPoemId: draft['id'],
+                  autoPushPreview: true,
+                ),
+              ),
+            );
+            if (result != null && result is Map<String, dynamic> && mounted) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF993B3B)),
+                ),
+              );
+              bool success = await ApiService().updatePoem(
+                poemId: result['editPoemId'] ?? draft['id'],
+                title: result['title'],
+                content: result['content'],
+                categoryId: result['categoryId'],
+                published: result['published'],
+              );
+              if (mounted) {
+                Navigator.pop(context); // Pop loading
+                if (success) {
+                  _loadDrafts();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(T.lang == 'id' ? 'Gagal menyimpan perubahan' : 'Failed to save changes'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.red[200]!, width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatDate(draft["date_created"]),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
+                    GestureDetector(
+                      onTap: () => _deleteDraft(index),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  draft["title"] ?? "Untitled",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'serif',
                   ),
-                  GestureDetector(
-                    onTap: () => _deleteDraft(index),
-                    child: Icon(
-                      Icons.delete_outline,
-                      size: 20,
-                      color: Colors.grey[700],
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    T.getCleanContent(draft["content"] ?? ""),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontSize: 13,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                draft["title"] ?? "Untitled",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'serif',
                 ),
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  T.getCleanContent(draft["content"] ?? ""),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey[800],
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

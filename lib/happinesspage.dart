@@ -167,7 +167,7 @@ class _HappinessPageState extends State<HappinessPage> {
       } catch (_) {}
     }
 
-    final rawContent = poem['content'] ?? '';
+    final rawContent = T.getCleanContent(poem['content'] ?? '');
     final lines = rawContent.split('\n');
     final contentSnippet = lines.take(4).join('\n');
 

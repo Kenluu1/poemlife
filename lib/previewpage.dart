@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/publicationpage.dart';
 import 'package:poemlife/detailpreviewpage.dart';
+import 'package:poemlife/addcategoriespage.dart';
 import 'translation.dart';
 
 class PreviewPage extends StatefulWidget {
   final String title;
   final String content;
   final Map<String, dynamic> selectedCategory;
+  final int? editPoemId;
 
   const PreviewPage({
     super.key,
     required this.title,
     required this.content,
     required this.selectedCategory,
+    this.editPoemId,
   });
 
   @override
@@ -49,9 +52,16 @@ class _PreviewPageState extends State<PreviewPage> {
       finalPublished = 0;
     }
 
+    // Build categories prefix
+    String categoryPrefix = '';
+    if (_selectedCategories.isNotEmpty) {
+      final ids = _selectedCategories.map((c) => c['id'].toString()).join(',');
+      categoryPrefix = '[categories:$ids]';
+    }
+
     final payload = {
       'title': widget.title,
-      'content': widget.content,
+      'content': categoryPrefix + widget.content,
       'categoryId': _selectedCategories.isNotEmpty ? _selectedCategories.first['id'] : 1,
       'published': finalPublished,
     };
@@ -164,8 +174,24 @@ class _PreviewPageState extends State<PreviewPage> {
                     _selectedCategories.isEmpty
                         ? T.s("add_category")
                         : _selectedCategories.map((c) => T.s(c['name'].toString().toLowerCase())).join(', '),
-                    "",
-                    onTap: null,
+                    T.s("see_all"),
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddCategoriesPage(
+                            initialCategories: _selectedCategories,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is List) {
+                        setState(() {
+                          _selectedCategories = List<Map<String, dynamic>>.from(
+                            result.map((item) => Map<String, dynamic>.from(item as Map))
+                          );
+                        });
+                      }
+                    },
                   ),
                   Divider(height: 1, color: Colors.red[100]),
                   _buildSettingRow(

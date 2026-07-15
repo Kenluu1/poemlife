@@ -342,25 +342,39 @@ class T {
     return _translations[_lang]?[key] ?? _translations['en']?[key] ?? key;
   }
 
+  static List<int> getCategoriesFromContent(String content) {
+    final regExp = RegExp(r'\[categories:([\d,]+)\]');
+    final match = regExp.firstMatch(content);
+    if (match != null) {
+      final idsStr = match.group(1);
+      if (idsStr != null && idsStr.isNotEmpty) {
+        return idsStr.split(',').map((id) => int.tryParse(id) ?? 1).toList();
+      }
+    }
+    return [];
+  }
+
   static TextAlign getTextAlign(String content) {
-    if (content.startsWith('[align:left]')) {
+    String temp = content.replaceAll(RegExp(r'\[categories:[\d,]+\]'), '');
+    if (temp.startsWith('[align:left]')) {
       return TextAlign.left;
-    } else if (content.startsWith('[align:right]')) {
+    } else if (temp.startsWith('[align:right]')) {
       return TextAlign.right;
-    } else if (content.startsWith('[align:center]')) {
+    } else if (temp.startsWith('[align:center]')) {
       return TextAlign.center;
     }
     return TextAlign.center;
   }
 
   static String getCleanContent(String content) {
-    if (content.startsWith('[align:left]')) {
-      return content.substring(12);
-    } else if (content.startsWith('[align:right]')) {
-      return content.substring(13);
-    } else if (content.startsWith('[align:center]')) {
-      return content.substring(14);
+    String clean = content.replaceAll(RegExp(r'\[categories:[\d,]+\]'), '');
+    if (clean.startsWith('[align:left]')) {
+      return clean.substring(12);
+    } else if (clean.startsWith('[align:right]')) {
+      return clean.substring(13);
+    } else if (clean.startsWith('[align:center]')) {
+      return clean.substring(14);
     }
-    return content;
+    return clean;
   }
 }

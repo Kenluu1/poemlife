@@ -548,6 +548,64 @@ class ApiService {
       return false;
     }
   }
+
+  Future<String?> generatePoem(String poem) async {
+    final url = Uri.parse('$baseUrl/poem/generate');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({'poem': poem}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          return responseData['data']['generated'] as String?;
+        }
+      }
+      print('Gagal generate puisi: ${response.body}');
+      return null;
+    } catch (e) {
+      print('Error generatePoem: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updatePoem({
+    required int poemId,
+    required String title,
+    required String content,
+    required int categoryId,
+    required int published,
+  }) async {
+    final url = Uri.parse('$baseUrl/poem/update');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'poem_id': poemId,
+          'title': title,
+          'content': content,
+          'category_id': categoryId,
+          'is_published': published,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Update puisi sukses');
+        return true;
+      }
+      print('Gagal mengupdate puisi: ${response.body}');
+      return false;
+    } catch (e) {
+      print('Error updatePoem: $e');
+      return false;
+    }
+  }
 }
 
 class AuthService extends ApiService {}

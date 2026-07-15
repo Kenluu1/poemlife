@@ -34,7 +34,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
   bool _isFollowing = false;
   int _followersCount = 0;
   int _followingCount = 0;
-  int _empathyCount = 0;
+  int _userPoemsCount = 0;
   bool _isFollowTransitioning = false;
 
   @override
@@ -52,11 +52,15 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
 
     // Fetch user details from API
     final profile = await ApiService().getUserProfile(widget.userId);
+    final userPoems = await ApiService().getPoems(
+      type: 'user',
+      targetUserId: widget.userId,
+    );
     if (profile != null) {
       _profileData = profile;
       _followersCount = profile['followers'] ?? 0;
       _followingCount = profile['following'] ?? 0;
-      _empathyCount = profile['empathy'] ?? 0;
+      _userPoemsCount = userPoems.length;
       _isFollowing = profile['is_following'] == true;
     }
 
@@ -586,9 +590,9 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem(_followersCount, "Followers"),
-              _buildStatItem(_followingCount, "Following"),
-              _buildStatItem(_empathyCount, "Empathy"),
+              _buildStatItem(_followersCount, T.s("followers")),
+              _buildStatItem(_followingCount, T.s("following")),
+              _buildStatItem(_userPoemsCount, T.s("poems")),
             ],
           ),
         ),
@@ -598,6 +602,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
                 onTap: () {},
@@ -1055,6 +1060,7 @@ class _OtherUserProfileState extends State<OtherUserProfile> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 width: 80,

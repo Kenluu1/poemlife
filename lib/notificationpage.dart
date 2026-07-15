@@ -311,7 +311,7 @@ class _NotificationPageState extends State<NotificationPage> {
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
-              ] else if (type == 'like' || type == 'comment') ...[
+              ] else if (type == 'comment') ...[
                 // Reply Button
                 OutlinedButton(
                   onPressed: () {
