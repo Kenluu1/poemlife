@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
@@ -8,10 +7,7 @@ import 'translation.dart';
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> poem;
 
-  const DetailPage({
-    super.key,
-    required this.poem,
-  });
+  const DetailPage({super.key, required this.poem});
 
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -21,9 +17,11 @@ class _DetailPageState extends State<DetailPage> {
   final Color maroon = const Color(0xFFA33B3B);
   final TextEditingController _commentController = TextEditingController();
 
-  String _followStatus = 'idle'; // 'idle', 'loading', 'following'
+  String _followStatus = 'idle';
   bool _isLiked = false;
   int _loveCount = 0;
+  bool _isEmpathized = false;
+  int _empathyCount = 0;
   bool _isBookmarked = false;
   Set<String> _likedCommentIds = {};
   Map<String, dynamic>? _replyingToComment;
@@ -39,9 +37,24 @@ class _DetailPageState extends State<DetailPage> {
   void initState() {
     super.initState();
     _poem = Map<String, dynamic>.from(widget.poem);
-    _isLiked = _poem['is_liked'] == true || _poem['has_love_reaction'] == true || _poem['has_love_reaction'] == 1;
+    _isLiked =
+        _poem['is_liked'] == true ||
+        _poem['has_love_reaction'] == true ||
+        _poem['has_love_reaction'] == 1;
     _loveCount = int.tryParse(_poem['love_count']?.toString() ?? '0') ?? 0;
-    _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1 || _poem['isBookmark'] == 1;
+    _isEmpathized =
+        _poem['is_empathized'] == true ||
+        _poem['has_empathy_reaction'] == true ||
+        _poem['has_empathy_reaction'] == 1;
+    _empathyCount =
+        int.tryParse(
+          (_poem['empathy_count'] ?? _poem['empathies'] ?? 0).toString(),
+        ) ??
+        0;
+    _isBookmarked =
+        _poem['is_bookmarked'] == 1 ||
+        _poem['bookmarked'] == 1 ||
+        _poem['isBookmark'] == 1;
     _loadUserProfile();
     _loadComments();
     _loadPoemDetail();
@@ -54,10 +67,41 @@ class _DetailPageState extends State<DetailPage> {
       final detail = await ApiService().getPoemDetail(poemId);
       if (detail != null && mounted) {
         setState(() {
+          final existingAuthorImage = _poem['authorImage'];
+          final existingAuthor = _poem['author'];
+          final existingAuthorId = _poem['authorId'];
+
           _poem = detail;
-          _isLiked = _poem['is_liked'] == true || _poem['has_love_reaction'] == true || _poem['has_love_reaction'] == 1;
-          _loveCount = int.tryParse(_poem['love_count']?.toString() ?? '0') ?? 0;
-          _isBookmarked = _poem['is_bookmarked'] == 1 || _poem['bookmarked'] == 1 || _poem['isBookmark'] == 1;
+
+          if (_poem['authorImage'] == null && existingAuthorImage != null) {
+            _poem['authorImage'] = existingAuthorImage;
+          }
+          if (_poem['author'] == null && existingAuthor != null) {
+            _poem['author'] = existingAuthor;
+          }
+          if (_poem['authorId'] == null && existingAuthorId != null) {
+            _poem['authorId'] = existingAuthorId;
+          }
+
+          _isLiked =
+              _poem['is_liked'] == true ||
+              _poem['has_love_reaction'] == true ||
+              _poem['has_love_reaction'] == 1;
+          _loveCount =
+              int.tryParse(_poem['love_count']?.toString() ?? '0') ?? 0;
+          _isEmpathized =
+              _poem['is_empathized'] == true ||
+              _poem['has_empathy_reaction'] == true ||
+              _poem['has_empathy_reaction'] == 1;
+          _empathyCount =
+              int.tryParse(
+                (_poem['empathy_count'] ?? _poem['empathies'] ?? 0).toString(),
+              ) ??
+              0;
+          _isBookmarked =
+              _poem['is_bookmarked'] == 1 ||
+              _poem['bookmarked'] == 1 ||
+              _poem['isBookmark'] == 1;
         });
         _loadFollowStatus();
       }
@@ -84,35 +128,67 @@ class _DetailPageState extends State<DetailPage> {
                   .map((r) {
                     return {
                       'id': r['id'],
-                      'author': r['author'] != null && r['author'] is Map ? r['author']['username'] ?? 'Anonymous' : 'Anonymous',
-                      'authorId': r['author'] != null && r['author'] is Map ? r['author']['id'] : null,
-                      'time': r['date_created'] != null ? "${DateTime.parse(r['date_created']).day}/${DateTime.parse(r['date_created']).month}" : 'Just now',
+                      'author': r['author'] != null && r['author'] is Map
+                          ? r['author']['username'] ?? 'Anonymous'
+                          : 'Anonymous',
+                      'authorId': r['author'] != null && r['author'] is Map
+                          ? r['author']['id']
+                          : null,
+                      'time': r['date_created'] != null
+                          ? "${DateTime.parse(r['date_created']).day}/${DateTime.parse(r['date_created']).month}"
+                          : 'Just now',
                       'text': r['comment'] ?? r['text'] ?? '',
-                      'avatar': r['author'] != null && r['author'] is Map && r['author']['image'] != null
+                      'avatar':
+                          r['author'] != null &&
+                              r['author'] is Map &&
+                              r['author']['image'] != null
                           ? r['author']['image'].toString()
                           : 'https://i.pravatar.cc/150?img=32',
                     };
                   })
-                  .where((r) => r['author'] != null &&
-                      !(r['author'].toString().toLowerCase().contains('anonymous') ||
-                        r['author'].toString().toLowerCase().contains('anonymus')))
+                  .where(
+                    (r) =>
+                        r['author'] != null &&
+                        !(r['author'].toString().toLowerCase().contains(
+                              'anonymous',
+                            ) ||
+                            r['author'].toString().toLowerCase().contains(
+                              'anonymus',
+                            )),
+                  )
                   .toList();
 
               return {
                 'id': c['id'],
-                'author': c['author'] != null && c['author'] is Map ? c['author']['username'] ?? 'Anonymous' : 'Anonymous',
-                'authorId': c['author'] != null && c['author'] is Map ? c['author']['id'] : null,
-                'time': c['date_created'] != null ? "${DateTime.parse(c['date_created']).day}/${DateTime.parse(c['date_created']).month}" : 'Just now',
+                'author': c['author'] != null && c['author'] is Map
+                    ? c['author']['username'] ?? 'Anonymous'
+                    : 'Anonymous',
+                'authorId': c['author'] != null && c['author'] is Map
+                    ? c['author']['id']
+                    : null,
+                'time': c['date_created'] != null
+                    ? "${DateTime.parse(c['date_created']).day}/${DateTime.parse(c['date_created']).month}"
+                    : 'Just now',
                 'text': c['comment'] ?? '',
-                'avatar': c['author'] != null && c['author'] is Map && c['author']['image'] != null
+                'avatar':
+                    c['author'] != null &&
+                        c['author'] is Map &&
+                        c['author']['image'] != null
                     ? c['author']['image'].toString()
                     : 'https://i.pravatar.cc/150?img=32',
-                'replies': mappedApiReplies
+                'replies': mappedApiReplies,
               };
             })
-            .where((c) => c['author'] != null &&
-                !(c['author'].toString().toLowerCase().contains('anonymous') ||
-                  c['author'].toString().toLowerCase().contains('anonymus')))
+            .where(
+              (c) =>
+                  c['author'] != null &&
+                  !(c['author'].toString().toLowerCase().contains(
+                        'anonymous',
+                      ) ||
+                      c['author'].toString().toLowerCase().contains(
+                        'anonymus',
+                      )),
+            )
             .toList();
       });
     } else if (mounted) {
@@ -138,7 +214,9 @@ class _DetailPageState extends State<DetailPage> {
       if (profile != null && mounted) {
         setState(() {
           _currentUsername = profile['username'] ?? 'User';
-          _avatarUrl = (profile['image'] != null && profile['image'].toString().isNotEmpty)
+          _avatarUrl =
+              (profile['image'] != null &&
+                  profile['image'].toString().isNotEmpty)
               ? profile['image'].toString()
               : 'https://i.pravatar.cc/150?img=11';
         });
@@ -154,7 +232,8 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _loadFollowStatus() async {
-    final authorId = _poem['authorId'] ??
+    final authorId =
+        _poem['authorId'] ??
         ((_poem['author'] != null && _poem['author'] is Map)
             ? _poem['author']['id']
             : null);
@@ -162,18 +241,30 @@ class _DetailPageState extends State<DetailPage> {
       final authorProfile = await ApiService().getUserProfile(authorId);
       if (authorProfile != null && mounted) {
         setState(() {
-          _followStatus = authorProfile['is_following'] == true ? 'following' : 'idle';
+          _followStatus = authorProfile['is_following'] == true
+              ? 'following'
+              : 'idle';
         });
       }
     }
   }
 
   void _addComment() async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty) return;
+    try {
+      final text = _commentController.text.trim();
+      if (text.isEmpty) return;
 
-    final poemId = _poem['id'];
-    if (poemId != null) {
+      final poemId = _poem['id'];
+      if (poemId == null) {
+        print("Error: poemId is null!");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Error: Poem ID is null")),
+          );
+        }
+        return;
+      }
+
       if (_replyingToComment != null) {
         final parentId = _replyingToComment!['id'];
         final newReply = {
@@ -196,7 +287,11 @@ class _DetailPageState extends State<DetailPage> {
           _replyingToComment = null;
         });
 
-        final success = await ApiService().createComment(poemId, text, parentCommentId: parentId);
+        final success = await ApiService().createComment(
+          poemId,
+          text,
+          parentCommentId: parentId,
+        );
         if (success) {
           _loadComments();
         }
@@ -218,10 +313,33 @@ class _DetailPageState extends State<DetailPage> {
           _loadComments();
         }
       }
+    } catch (e, stackTrace) {
+      print("Exception in _addComment: $e");
+      print(stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error commenting: $e")));
+      }
     }
   }
 
-  void _showActionsMenu() {
+  void _showActionsMenu() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUserId = prefs.getInt('userId');
+
+    final int? poemAuthorId = (_poem['authorId'] != null)
+        ? int.tryParse(_poem['authorId'].toString())
+        : ((_poem['author'] != null &&
+                  _poem['author'] is Map &&
+                  _poem['author']['id'] != null)
+              ? int.tryParse(_poem['author']['id'].toString())
+              : null);
+
+    final bool isOwnPoem = poemAuthorId != null && poemAuthorId == savedUserId;
+
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -236,170 +354,273 @@ class _DetailPageState extends State<DetailPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 16),
-              InkWell(
-                onTap: () async {
-                  Navigator.pop(context);
-                  final String authorUsername = (_poem['author'] != null && _poem['author'] is Map)
-                       ? _poem['author']['username'] ?? 'Anonymous'
-                       : _poem['author']?.toString() ?? 'Anonymous';
-                  
-                  final prefs = await SharedPreferences.getInstance();
-                  List<String> blocked = prefs.getStringList('blocked_users') ?? [];
-                  if (!blocked.contains(authorUsername)) {
-                    blocked.add(authorUsername);
-                    await prefs.setStringList('blocked_users', blocked);
-                  }
-                  
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("$authorUsername has been blocked"),
-                      backgroundColor: maroon,
-                    ),
-                  );
-                  Navigator.pop(context, {'action': 'reload'});
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Center(
-                    child: Text(
-                      T.s("block"),
-                      style: const TextStyle(
-                        color: Color(0xFF993B3B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFF2D1D1)),
-              InkWell(
-                onTap: () async {
-                  Navigator.pop(context);
-                  final poemId = widget.poem['id'];
-                  if (poemId != null) {
-                    final prefs = await SharedPreferences.getInstance();
-                    List<String> reported = prefs.getStringList('reported_poems') ?? [];
-                    final String poemIdStr = poemId.toString();
-                    if (!reported.contains(poemIdStr)) {
-                      reported.add(poemIdStr);
-                      await prefs.setStringList('reported_poems', reported);
-                    }
-                  }
-                  
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text("Post reported successfully"),
-                      backgroundColor: maroon,
-                    ),
-                  );
-                  Navigator.pop(context, {'action': 'reload'});
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Center(
-                    child: Text(
-                      T.s("report"),
-                      style: const TextStyle(
-                        color: Color(0xFF993B3B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFF2D1D1)),
-              InkWell(
-                onTap: () async {
-                  Navigator.pop(context);
-                  final String authorUsername = (_poem['author'] != null && _poem['author'] is Map)
-                       ? _poem['author']['username'] ?? 'Anonymous'
-                       : _poem['author']?.toString() ?? 'Anonymous';
-                  
-                  final prefs = await SharedPreferences.getInstance();
-                  List<String> muted = prefs.getStringList('muted_users') ?? [];
-                  if (!muted.contains(authorUsername)) {
-                    muted.add(authorUsername);
-                    await prefs.setStringList('muted_users', muted);
-                  }
-                  
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Notifications from $authorUsername muted"),
-                      backgroundColor: Colors.black87,
-                    ),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Center(
-                    child: Text(
-                      T.s("mute"),
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFF2D1D1)),
-              InkWell(
-                onTap: () async {
-                  Navigator.pop(context);
-                  final poemId = widget.poem['id'];
-                  if (poemId != null) {
-                    final prefs = await SharedPreferences.getInstance();
-                    List<String> sharedJson = prefs.getStringList('shared_empathy_poems') ?? [];
-                    
-                    bool alreadyShared = false;
-                    for (var s in sharedJson) {
-                      try {
-                        final parsed = jsonDecode(s);
-                        if (parsed['id'] == poemId) {
-                          alreadyShared = true;
-                          break;
+              if (isOwnPoem) ...[
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context); // Close actions sheet
+
+                    bool confirmDelete =
+                        await showDialog<bool>(
+                          context: context,
+                          builder: (context) => Dialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            backgroundColor: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Delete Poem",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    "This can't be undone and it will be removed from profile. Are you sure want to delete?",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF993B3B,
+                                        ),
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Delete",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      style: OutlinedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: Colors.grey.shade200,
+                                          width: 1.5,
+                                        ),
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Cancel",
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ) ??
+                        false;
+
+                    if (confirmDelete) {
+                      final poemId = _poem['id'];
+                      if (poemId != null) {
+                        bool success = await ApiService().deletePoem(poemId);
+                        if (success) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Puisi berhasil dihapus"),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            Navigator.pop(context, {'action': 'reload'});
+                          }
+                        } else {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Gagal menghapus puisi"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
-                      } catch (_) {}
+                      }
                     }
-                    
-                    if (!alreadyShared) {
-                      sharedJson.add(jsonEncode(_poem));
-                      await prefs.setStringList('shared_empathy_poems', sharedJson);
-                    }
-                  }
-                  
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("shared to empathy"),
-                      backgroundColor: Colors.black87,
-                    ),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Center(
-                    child: Text(
-                      T.s("share"),
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: const Center(
+                      child: Text(
+                        "Delete Poem",
+                        style: TextStyle(
+                          color: Color(0xFF993B3B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ] else ...[
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final String authorUsername =
+                        (_poem['author'] != null && _poem['author'] is Map)
+                        ? _poem['author']['username'] ?? 'Anonymous'
+                        : _poem['author']?.toString() ?? 'Anonymous';
+
+                    final prefs = await SharedPreferences.getInstance();
+                    List<String> blocked =
+                        prefs.getStringList('blocked_users') ?? [];
+                    if (!blocked.contains(authorUsername)) {
+                      blocked.add(authorUsername);
+                      await prefs.setStringList('blocked_users', blocked);
+                    }
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("$authorUsername has been blocked"),
+                        backgroundColor: maroon,
+                      ),
+                    );
+                    Navigator.pop(context, {'action': 'reload'});
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Center(
+                      child: Text(
+                        T.s("block"),
+                        style: const TextStyle(
+                          color: Color(0xFF993B3B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFF2D1D1)),
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final poemId = widget.poem['id'];
+                    if (poemId != null) {
+                      final prefs = await SharedPreferences.getInstance();
+                      List<String> reported =
+                          prefs.getStringList('reported_poems') ?? [];
+                      final String poemIdStr = poemId.toString();
+                      if (!reported.contains(poemIdStr)) {
+                        reported.add(poemIdStr);
+                        await prefs.setStringList('reported_poems', reported);
+                      }
+                    }
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text("Post reported successfully"),
+                        backgroundColor: maroon,
+                      ),
+                    );
+                    Navigator.pop(context, {'action': 'reload'});
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Center(
+                      child: Text(
+                        T.s("report"),
+                        style: const TextStyle(
+                          color: Color(0xFF993B3B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFF2D1D1)),
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final String authorUsername =
+                        (_poem['author'] != null && _poem['author'] is Map)
+                        ? _poem['author']['username'] ?? 'Anonymous'
+                        : _poem['author']?.toString() ?? 'Anonymous';
+
+                    final prefs = await SharedPreferences.getInstance();
+                    List<String> muted =
+                        prefs.getStringList('muted_users') ?? [];
+                    if (!muted.contains(authorUsername)) {
+                      muted.add(authorUsername);
+                      await prefs.setStringList('muted_users', muted);
+                    }
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          "Notifications from $authorUsername muted",
+                        ),
+                        backgroundColor: Colors.black87,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Center(
+                      child: Text(
+                        T.s("mute"),
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
             ],
           ),
@@ -447,7 +668,9 @@ class _DetailPageState extends State<DetailPage> {
     if (authorId == null || authorId == _currentUserId) return;
 
     final String originalStatus = _followStatus;
-    final String nextStatus = _followStatus == 'following' ? 'idle' : 'following';
+    final String nextStatus = _followStatus == 'following'
+        ? 'idle'
+        : 'following';
 
     setState(() {
       _followStatus = nextStatus;
@@ -490,7 +713,11 @@ class _DetailPageState extends State<DetailPage> {
           child: const Center(
             child: Text(
               "Following",
-              style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -508,7 +735,11 @@ class _DetailPageState extends State<DetailPage> {
           child: const Center(
             child: Text(
               "Follow",
-              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -519,9 +750,39 @@ class _DetailPageState extends State<DetailPage> {
   Widget _buildReactionsRow() {
     return Row(
       children: [
-        Icon(Icons.language, size: 18, color: Colors.grey[600]),
+        EmpathyIcon(
+          isEmpathized: _isEmpathized,
+          size: 20,
+          onTap: () async {
+            final bool currentlyEmpathized = _isEmpathized;
+            setState(() {
+              _isEmpathized = !currentlyEmpathized;
+              if (_isEmpathized) {
+                _empathyCount++;
+              } else {
+                if (_empathyCount > 0) _empathyCount--;
+              }
+            });
+            ApiService.notifyReaction(_getUpdatedPoemMap());
+            bool success = await ApiService().toggleReaction(_poem['id'], 2);
+            if (!success) {
+              setState(() {
+                _isEmpathized = currentlyEmpathized;
+                if (_isEmpathized) {
+                  _empathyCount++;
+                } else {
+                  if (_empathyCount > 0) _empathyCount--;
+                }
+              });
+              ApiService.notifyReaction(_getUpdatedPoemMap());
+            }
+          },
+        ),
         const SizedBox(width: 4),
-        const Text("394", style: TextStyle(color: Colors.grey, fontSize: 13)),
+        Text(
+          _empathyCount.toString(),
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
         const SizedBox(width: 16),
 
         GestureDetector(
@@ -532,9 +793,10 @@ class _DetailPageState extends State<DetailPage> {
               if (_isLiked) {
                 _loveCount++;
               } else {
-                _loveCount--;
+                if (_loveCount > 0) _loveCount--;
               }
             });
+            ApiService.notifyReaction(_getUpdatedPoemMap());
             bool success = await ApiService().toggleReaction(_poem['id'], 1);
             if (!success) {
               setState(() {
@@ -542,9 +804,10 @@ class _DetailPageState extends State<DetailPage> {
                 if (_isLiked) {
                   _loveCount++;
                 } else {
-                  _loveCount--;
+                  if (_loveCount > 0) _loveCount--;
                 }
               });
+              ApiService.notifyReaction(_getUpdatedPoemMap());
             }
           },
           child: Icon(
@@ -560,7 +823,11 @@ class _DetailPageState extends State<DetailPage> {
         ),
         const SizedBox(width: 16),
 
-        Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.grey[600]),
+        Icon(
+          Icons.chat_bubble_outline_rounded,
+          size: 18,
+          color: Colors.grey[600],
+        ),
         const SizedBox(width: 6),
         Text(
           _totalCommentsCount.toString(),
@@ -575,18 +842,27 @@ class _DetailPageState extends State<DetailPage> {
             setState(() {
               _isBookmarked = nextState;
             });
+            ApiService.notifyReaction(_getUpdatedPoemMap());
 
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  nextState ? T.s("added_to_bookmark") : T.s("removed_from_bookmark"),
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  nextState
+                      ? T.s("added_to_bookmark")
+                      : T.s("removed_from_bookmark"),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 backgroundColor: const Color(0xFFA33B3B),
                 duration: const Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             );
 
@@ -595,6 +871,7 @@ class _DetailPageState extends State<DetailPage> {
               setState(() {
                 _isBookmarked = previousState;
               });
+              ApiService.notifyReaction(_getUpdatedPoemMap());
             }
           },
           child: Icon(
@@ -607,42 +884,82 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  Widget _buildCommentItem(Map<String, dynamic> item, {required int parentCommentId}) {
+  Widget _buildCommentItem(
+    Map<String, dynamic> item, {
+    required int parentCommentId,
+  }) {
     final author = item['author'] ?? '';
     final time = item['time'] ?? '';
     final text = item['text'] ?? '';
     final avatar = item['avatar'] ?? '';
+    final commentAuthorId = item['authorId'];
     final String commentIdStr = (item['id'] ?? '').toString();
     final bool isCommentLiked = _likedCommentIds.contains(commentIdStr);
     final int? poemAuthorId = (_poem['authorId'] != null)
         ? int.tryParse(_poem['authorId'].toString())
-        : ((_poem['author'] != null && _poem['author'] is Map && _poem['author']['id'] != null)
-            ? int.tryParse(_poem['author']['id'].toString())
-            : null);
+        : ((_poem['author'] != null &&
+                  _poem['author'] is Map &&
+                  _poem['author']['id'] != null)
+              ? int.tryParse(_poem['author']['id'].toString())
+              : null);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: () async {
-            final authorId = item['authorId'];
-            if (authorId != null && authorId != _currentUserId) {
+            if (commentAuthorId != null && commentAuthorId != _currentUserId) {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => OtherUserProfile(
-                    userId: authorId,
+                    userId: commentAuthorId,
                     username: author,
                   ),
                 ),
               );
             }
           },
-          child: CircleAvatar(
-            radius: 14,
-            backgroundImage: NetworkImage(avatar),
-            backgroundColor: Colors.grey[200],
-          ),
+          child: commentAuthorId == _currentUserId
+              ? ValueListenableBuilder<String?>(
+                  valueListenable: ApiService.currentUserAvatar,
+                  builder: (context, currentAvatar, _) {
+                    final baseAvatar =
+                        (currentAvatar != null && currentAvatar.isNotEmpty)
+                        ? currentAvatar
+                        : avatar;
+                    final hasImage = baseAvatar.isNotEmpty;
+                    final displayUrl = hasImage
+                        ? (baseAvatar.contains('?')
+                              ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                              : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}')
+                        : '';
+                    return CircleAvatar(
+                      radius: 14,
+                      backgroundImage: hasImage
+                          ? NetworkImage(displayUrl)
+                          : null,
+                      backgroundColor: Colors.grey[200],
+                      child: hasImage
+                          ? null
+                          : const Icon(
+                              Icons.person,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                    );
+                  },
+                )
+              : CircleAvatar(
+                  radius: 14,
+                  backgroundImage: avatar.isNotEmpty
+                      ? NetworkImage(avatar)
+                      : null,
+                  backgroundColor: Colors.grey[200],
+                  child: avatar.isEmpty
+                      ? const Icon(Icons.person, size: 14, color: Colors.grey)
+                      : null,
+                ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -668,7 +985,10 @@ class _DetailPageState extends State<DetailPage> {
                     },
                     child: Text(
                       author,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -681,14 +1001,21 @@ class _DetailPageState extends State<DetailPage> {
               const SizedBox(height: 4),
               Text(
                 text,
-                style: const TextStyle(fontSize: 12, height: 1.4, color: Colors.black87),
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.language, size: 14, color: Colors.grey[600]),
+                  const EmpathyIcon(isEmpathized: false, size: 14),
                   const SizedBox(width: 4),
-                  const Text("1k", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const Text(
+                    "1k",
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                   const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () async {
@@ -700,12 +1027,17 @@ class _DetailPageState extends State<DetailPage> {
                         }
                       });
                       final prefs = await SharedPreferences.getInstance();
-                      await prefs.setStringList('liked_comment_ids', _likedCommentIds.toList());
+                      await prefs.setStringList(
+                        'liked_comment_ids',
+                        _likedCommentIds.toList(),
+                      );
                     },
                     child: Row(
                       children: [
                         Icon(
-                          isCommentLiked ? Icons.favorite : Icons.favorite_border,
+                          isCommentLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border,
                           size: 14,
                           color: isCommentLiked ? maroon : Colors.grey[600],
                         ),
@@ -720,7 +1052,8 @@ class _DetailPageState extends State<DetailPage> {
                       ],
                     ),
                   ),
-                  if (poemAuthorId != null && poemAuthorId == _currentUserId) ...[
+                  if (poemAuthorId != null &&
+                      poemAuthorId == _currentUserId) ...[
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: () {
@@ -733,7 +1066,11 @@ class _DetailPageState extends State<DetailPage> {
                       },
                       child: Text(
                         "Reply",
-                        style: TextStyle(color: maroon, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: maroon,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -761,7 +1098,10 @@ class _DetailPageState extends State<DetailPage> {
               ...((comment['replies'] as List).map((reply) {
                 return Padding(
                   padding: const EdgeInsets.only(left: 36.0, top: 12.0),
-                  child: _buildCommentItem(reply as Map<String, dynamic>, parentCommentId: comment['id']),
+                  child: _buildCommentItem(
+                    reply as Map<String, dynamic>,
+                    parentCommentId: comment['id'],
+                  ),
                 );
               })),
             const SizedBox(height: 20),
@@ -791,10 +1131,28 @@ class _DetailPageState extends State<DetailPage> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundImage: NetworkImage(_avatarUrl),
-            backgroundColor: Colors.grey[200],
+          ValueListenableBuilder<String?>(
+            valueListenable: ApiService.currentUserAvatar,
+            builder: (context, currentAvatar, _) {
+              final baseAvatar =
+                  (currentAvatar != null && currentAvatar.isNotEmpty)
+                  ? currentAvatar
+                  : _avatarUrl;
+              final hasImage = baseAvatar.isNotEmpty;
+              final displayUrl = hasImage
+                  ? (baseAvatar.contains('?')
+                        ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                        : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}')
+                  : '';
+              return CircleAvatar(
+                radius: 16,
+                backgroundImage: hasImage ? NetworkImage(displayUrl) : null,
+                backgroundColor: Colors.grey[200],
+                child: hasImage
+                    ? null
+                    : const Icon(Icons.person, size: 16, color: Colors.grey),
+              );
+            },
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -815,7 +1173,10 @@ class _DetailPageState extends State<DetailPage> {
                         hintText: _replyingToComment != null
                             ? "${T.s("reply_to")}${_replyingToComment!['author']}..."
                             : T.s("comment_hint"),
-                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+                        hintStyle: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
                         border: InputBorder.none,
                       ),
                     ),
@@ -837,6 +1198,49 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
+  Map<String, dynamic> _getUpdatedPoemMap() {
+    return {
+      ..._poem,
+      'is_liked': _isLiked,
+      'has_love_reaction': _isLiked,
+      'love_count': _loveCount,
+      'is_empathized': _isEmpathized,
+      'has_empathy_reaction': _isEmpathized,
+      'empathy_count': _empathyCount,
+      'is_bookmarked': _isBookmarked ? 1 : 0,
+      'comment_count': _totalCommentsCount,
+    };
+  }
+
+  Widget _buildReplyingBanner() {
+    if (_replyingToComment == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      color: Colors.grey[100],
+      child: Row(
+        children: [
+          Text(
+            "${T.s("reply_to")}${_replyingToComment!['author']}",
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _replyingToComment = null;
+              });
+            },
+            child: const Icon(Icons.close, size: 16, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _poem['title'] ?? 'Untitled';
@@ -844,26 +1248,31 @@ class _DetailPageState extends State<DetailPage> {
     final username = (_poem['author'] != null && _poem['author'] is Map)
         ? _poem['author']['username'] ?? 'Anonymous'
         : _poem['author']?.toString() ?? 'Anonymous';
-    final avatarUrl = _poem['authorImage'] ??
+    final avatarUrl =
+        _poem['authorImage'] ??
         ((_poem['author'] != null && _poem['author'] is Map)
             ? _poem['author']['image']
             : null);
     final categoryId = (_poem['category_id'] ?? _poem['categoryId']) as int?;
     final int? poemAuthorId = (_poem['authorId'] != null)
         ? int.tryParse(_poem['authorId'].toString())
-        : ((_poem['author'] != null && _poem['author'] is Map && _poem['author']['id'] != null)
-            ? int.tryParse(_poem['author']['id'].toString())
-            : null);
+        : ((_poem['author'] != null &&
+                  _poem['author'] is Map &&
+                  _poem['author']['id'] != null)
+              ? int.tryParse(_poem['author']['id'].toString())
+              : null);
 
-    final parsedCategoryIds = T.getCategoriesFromContent(content);
     List<dynamic> categoriesList = [];
+    final parsedCategoryIds = T.getCategoriesFromContent(content);
     if (parsedCategoryIds.isNotEmpty) {
-      categoriesList = parsedCategoryIds.map((id) => {'name': _getCategoryName(id)}).toList();
+      categoriesList = parsedCategoryIds
+          .map((id) => {'name': _getCategoryName(id)})
+          .toList();
     } else if (_poem['categories'] != null) {
       categoriesList = _poem['categories'] as List<dynamic>;
     } else {
       categoriesList = [
-        {'name': _getCategoryName(categoryId)}
+        {'name': _getCategoryName(categoryId)},
       ];
     }
 
@@ -871,12 +1280,7 @@ class _DetailPageState extends State<DetailPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        Navigator.pop(context, {
-          'is_liked': _isLiked,
-          'love_count': _loveCount,
-          'is_bookmarked': _isBookmarked ? 1 : 0,
-          'comment_count': _totalCommentsCount,
-        });
+        Navigator.pop(context, _getUpdatedPoemMap());
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -885,12 +1289,7 @@ class _DetailPageState extends State<DetailPage> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context, {
-              'is_liked': _isLiked,
-              'love_count': _loveCount,
-              'is_bookmarked': _isBookmarked ? 1 : 0,
-              'comment_count': _totalCommentsCount,
-            }),
+            onPressed: () => Navigator.pop(context, _getUpdatedPoemMap()),
           ),
           actions: [
             IconButton(
@@ -903,7 +1302,10 @@ class _DetailPageState extends State<DetailPage> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -929,11 +1331,14 @@ class _DetailPageState extends State<DetailPage> {
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  final authorId = _poem['authorId'] ??
-                                      ((_poem['author'] != null && _poem['author'] is Map)
+                                  final authorId =
+                                      _poem['authorId'] ??
+                                      ((_poem['author'] != null &&
+                                              _poem['author'] is Map)
                                           ? _poem['author']['id']
                                           : null);
-                                  if (authorId != null && authorId != _currentUserId) {
+                                  if (authorId != null &&
+                                      authorId != _currentUserId) {
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -944,21 +1349,70 @@ class _DetailPageState extends State<DetailPage> {
                                       ),
                                     );
                                     if (result == 'reload') {
-                                      Navigator.pop(context, {'action': 'reload'});
+                                      Navigator.pop(context, {
+                                        'action': 'reload',
+                                      });
                                     }
                                   }
                                 },
                                 child: Row(
                                   children: [
-                                    CircleAvatar(
-                                      radius: 16,
-                                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                                      backgroundColor: Colors.grey[200],
-                                      child: avatarUrl == null ? const Icon(Icons.person, size: 20, color: Colors.grey) : null,
-                                    ),
+                                    poemAuthorId == _currentUserId
+                                        ? ValueListenableBuilder<String?>(
+                                            valueListenable:
+                                                ApiService.currentUserAvatar,
+                                            builder: (context, currentAvatar, _) {
+                                              final baseAvatar =
+                                                  (currentAvatar != null &&
+                                                      currentAvatar.isNotEmpty)
+                                                  ? currentAvatar
+                                                  : (avatarUrl ?? '');
+                                              final hasImage =
+                                                  baseAvatar.isNotEmpty;
+                                              final displayUrl = hasImage
+                                                  ? (baseAvatar.contains('?')
+                                                        ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                                                        : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}')
+                                                  : '';
+                                              return CircleAvatar(
+                                                radius: 16,
+                                                backgroundImage: hasImage
+                                                    ? NetworkImage(displayUrl)
+                                                    : null,
+                                                backgroundColor:
+                                                    Colors.grey[200],
+                                                child: hasImage
+                                                    ? null
+                                                    : const Icon(
+                                                        Icons.person,
+                                                        size: 20,
+                                                        color: Colors.grey,
+                                                      ),
+                                              );
+                                            },
+                                          )
+                                        : CircleAvatar(
+                                            radius: 16,
+                                            backgroundImage:
+                                                (avatarUrl != null &&
+                                                    avatarUrl.isNotEmpty)
+                                                ? NetworkImage(avatarUrl)
+                                                : null,
+                                            backgroundColor: Colors.grey[200],
+                                            child:
+                                                (avatarUrl == null ||
+                                                    avatarUrl.isEmpty)
+                                                ? const Icon(
+                                                    Icons.person,
+                                                    size: 20,
+                                                    color: Colors.grey,
+                                                  )
+                                                : null,
+                                          ),
                                     const SizedBox(width: 12),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           username,
@@ -1005,10 +1459,11 @@ class _DetailPageState extends State<DetailPage> {
                               T.getCleanContent(content),
                               textAlign: T.getTextAlign(content),
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  height: 1.8,
-                                  fontFamily: 'serif',
-                                  color: Colors.black87),
+                                fontSize: 14,
+                                height: 1.8,
+                                fontFamily: 'serif',
+                                color: Colors.black87,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 30),
@@ -1019,10 +1474,15 @@ class _DetailPageState extends State<DetailPage> {
                               runSpacing: 8,
                               children: categoriesList.map((category) {
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Text(
@@ -1046,7 +1506,10 @@ class _DetailPageState extends State<DetailPage> {
                     const SizedBox(height: 24),
                     Text(
                       T.s("comment"),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _buildCommentList(),
@@ -1056,38 +1519,10 @@ class _DetailPageState extends State<DetailPage> {
             ),
             Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildReplyingBanner(),
-                _buildCommentInputBar(),
-              ],
+              children: [_buildReplyingBanner(), _buildCommentInputBar()],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildReplyingBanner() {
-    if (_replyingToComment == null) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      color: Colors.grey[100],
-      child: Row(
-        children: [
-          Text(
-            "${T.s("reply_to")}${_replyingToComment!['author']}",
-            style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _replyingToComment = null;
-              });
-            },
-            child: const Icon(Icons.close, size: 16, color: Colors.black54),
-          ),
-        ],
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:poemlife/API.dart';
 import 'translation.dart';
@@ -36,6 +38,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   File? _avatarFile;
   File? _bannerFile;
+  Uint8List? _avatarBytes;
+  Uint8List? _bannerBytes;
   String? _selectedAvatarBase64;
   String? _selectedBannerBase64;
   final ImagePicker _picker = ImagePicker();
@@ -44,29 +48,52 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
+        maxWidth: 1080,
+        maxHeight: 1080,
         imageQuality: 85,
       );
 
       if (image != null) {
-        final File file = File(image.path);
-        final bytes = await file.readAsBytes();
-        final base64String = 'data:image/${image.name.split('.').last};base64,${base64Encode(bytes)}';
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          maxWidth: isAvatar ? 400 : 800,
+          maxHeight: isAvatar ? 400 : 450,
+          compressQuality: 75,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: isAvatar ? 'Crop Profile Picture' : 'Crop Banner',
+              toolbarColor: const Color(0xFF8B2B32),
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: isAvatar ? CropAspectRatioPreset.square : CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: true,
+            ),
+            IOSUiSettings(
+              title: isAvatar ? 'Crop Profile Picture' : 'Crop Banner',
+              aspectRatioLockEnabled: true,
+            ),
+          ],
+          aspectRatio: isAvatar
+              ? const CropAspectRatio(ratioX: 1, ratioY: 1)
+              : const CropAspectRatio(ratioX: 16, ratioY: 9),
+        );
 
-        setState(() {
-          _hasChanges = true;
-          if (isAvatar) {
-            _avatarFile = file;
-            _selectedAvatarBase64 = base64String;
-          } else {
-            _bannerFile = file;
-            _selectedBannerBase64 = base64String;
-          }
-        });
+        if (croppedFile != null) {
+          final File file = File(croppedFile.path);
+          final bytes = await file.readAsBytes();
+          setState(() {
+            _hasChanges = true;
+            if (isAvatar) {
+              _avatarFile = file;
+              _avatarBytes = bytes;
+            } else {
+              _bannerFile = file;
+              _bannerBytes = bytes;
+            }
+          });
+        }
       }
     } catch (e) {
-      print('Error picking image: $e');
+      print('Error picking and cropping image: $e');
     }
   }
 
@@ -229,13 +256,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _isSavingLoading = true;
     });
 
+    String? avatarBase64 = _selectedAvatarBase64;
+    if (_avatarFile != null) {
+      try {
+        final bytes = await _avatarFile!.readAsBytes();
+        final ext = _avatarFile!.path.split('.').last.toLowerCase();
+        avatarBase64 = 'data:image/$ext;base64,${base64Encode(bytes)}';
+      } catch (e) {
+        print('Error reading avatar bytes: $e');
+      }
+    }
+
+    String? bannerBase64 = _selectedBannerBase64;
+    if (_bannerFile != null) {
+      try {
+        final bytes = await _bannerFile!.readAsBytes();
+        final ext = _bannerFile!.path.split('.').last.toLowerCase();
+        bannerBase64 = 'data:image/$ext;base64,${base64Encode(bytes)}';
+      } catch (e) {
+        print('Error reading banner bytes: $e');
+      }
+    }
+
     final success = await ApiService().updateUserProfile(
       username: usernameText,
       nim: _nimController.text.trim(),
       email: _emailController.text.trim(),
       bio: _bioController.text.trim(),
-      image: _selectedAvatarBase64,
-      banner: _selectedBannerBase64,
+      image: avatarBase64,
+      banner: bannerBase64,
     );
 
     if (mounted) {
@@ -341,65 +390,83 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final double coverHeight = constraints.maxWidth * 0.45;
       final double avatarRadius = constraints.maxWidth * 0.15;
 
-      return Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: constraints.maxWidth,
-                height: coverHeight,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.grey[300],
-                  image: DecorationImage(
-                    image: _bannerFile != null
-                        ? FileImage(_bannerFile!) as ImageProvider
-                        : (_bannerUrl.isNotEmpty
-                            ? NetworkImage(_bannerUrl) as ImageProvider
-                            : const AssetImage('assets/bannerbinus.png') as ImageProvider),
-                    fit: BoxFit.cover,
+      return SizedBox(
+        width: constraints.maxWidth,
+        height: coverHeight + (avatarRadius * 1.5),
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: coverHeight,
+              child: Stack(
+                children: [
+                  Container(
+                    width: constraints.maxWidth,
+                    height: coverHeight,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[300],
+                      image: DecorationImage(
+                        image: _bannerBytes != null
+                            ? MemoryImage(_bannerBytes!) as ImageProvider
+                            : (_bannerUrl.isNotEmpty
+                                ? NetworkImage(_bannerUrl) as ImageProvider
+                                : const AssetImage('assets/bannerbinus.png') as ImageProvider),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: () => _pickImage(false),
+                      child: _buildCameraButtonWidget(),
+                    ),
+                  ),
+                ],
               ),
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () => _pickImage(false),
-                  child: _buildCameraButtonWidget(),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: -avatarRadius / 2,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: avatarRadius,
-                  backgroundColor: Colors.white,
-                  child: CircleAvatar(
-                    radius: constraints.maxWidth * 0.15 - 4,
-                    backgroundColor: Colors.grey[400],
-                    backgroundImage: _avatarFile != null
-                        ? FileImage(_avatarFile!) as ImageProvider
-                        : NetworkImage(_avatarUrl) as ImageProvider,
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: () => _pickImage(true),
-                    child: _buildCameraButtonWidget(),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
+            Positioned(
+              top: coverHeight - avatarRadius,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SizedBox(
+                  width: avatarRadius * 2,
+                  height: avatarRadius * 2,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: avatarRadius,
+                        backgroundColor: Colors.white,
+                        child: CircleAvatar(
+                          radius: avatarRadius - 4,
+                          backgroundColor: Colors.grey[400],
+                          backgroundImage: _avatarBytes != null
+                              ? MemoryImage(_avatarBytes!) as ImageProvider
+                              : NetworkImage(_avatarUrl) as ImageProvider,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => _pickImage(true),
+                          child: _buildCameraButtonWidget(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     });
   }

@@ -150,12 +150,30 @@ class _PopularPoemsPageState extends State<PopularPoemsPage> {
             },
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: NetworkImage(avatarUrl),
-                  onBackgroundImageError: (_, __) {},
-                ),
+                poem['authorId'] == _currentUserId
+                    ? ValueListenableBuilder<String?>(
+                        valueListenable: ApiService.currentUserAvatar,
+                        builder: (context, currentAvatar, _) {
+                          final baseAvatar = (currentAvatar != null && currentAvatar.isNotEmpty)
+                              ? currentAvatar
+                              : avatarUrl;
+                          final displayUrl = baseAvatar.contains('?')
+                              ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                              : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}';
+                          return CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage: NetworkImage(displayUrl),
+                            onBackgroundImageError: (_, __) {},
+                          );
+                        },
+                      )
+                    : CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: NetworkImage(avatarUrl),
+                        onBackgroundImageError: (_, __) {},
+                      ),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,6 +215,9 @@ class _PopularPoemsPageState extends State<PopularPoemsPage> {
                 setState(() {
                   poem['is_liked'] = result['is_liked'];
                   poem['love_count'] = result['love_count'];
+                  poem['is_empathized'] = result['is_empathized'];
+                  poem['has_empathy_reaction'] = result['has_empathy_reaction'];
+                  poem['empathy_count'] = result['empathy_count'];
                   poem['is_bookmarked'] = result['is_bookmarked'];
                   poem['comment_count'] = result['comment_count'];
                 });
@@ -217,9 +238,46 @@ class _PopularPoemsPageState extends State<PopularPoemsPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                  EmpathyIcon(
+                    isEmpathized: poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1,
+                    size: 18,
+                    onTap: () async {
+                      final bool currentlyEmpathized = poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1;
+                      final int currentCount = int.tryParse((poem['empathy_count'] ?? poem['empathies'] ?? 0).toString()) ?? 0;
+                      final nextState = !currentlyEmpathized;
+                      final nextCount = nextState ? currentCount + 1 : (currentCount > 0 ? currentCount - 1 : 0);
+                      setState(() {
+                        poem['is_empathized'] = nextState;
+                        poem['has_empathy_reaction'] = nextState;
+                        poem['empathy_count'] = nextCount;
+                      });
+                      ApiService.notifyReaction({
+                        'poem_id': poem['id'],
+                        'is_empathized': nextState,
+                        'has_empathy_reaction': nextState,
+                        'empathy_count': nextCount,
+                      });
+                      bool success = await ApiService().toggleReaction(poem['id'], 2);
+                      if (!success) {
+                        setState(() {
+                          poem['is_empathized'] = currentlyEmpathized;
+                          poem['has_empathy_reaction'] = currentlyEmpathized;
+                          poem['empathy_count'] = currentCount;
+                        });
+                        ApiService.notifyReaction({
+                          'poem_id': poem['id'],
+                          'is_empathized': currentlyEmpathized,
+                          'has_empathy_reaction': currentlyEmpathized,
+                          'empathy_count': currentCount,
+                        });
+                      }
+                    },
+                  ),
                   const SizedBox(width: 4),
-                  const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    (poem['empathy_count'] ?? poem['empathies'] ?? 0).toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () async {

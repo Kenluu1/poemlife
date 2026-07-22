@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:poemlife/API.dart';
 import 'translation.dart';
 
 class DetailPreviewPage extends StatelessWidget {
@@ -129,13 +130,9 @@ class DetailPreviewPage extends StatelessWidget {
               Row(
                 children: [
                   // Empathy/Reaction icon
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.amber.shade100,
-                    ),
-                    child: Icon(Icons.emoji_emotions, size: 14, color: Colors.amber.shade800),
+                  const EmpathyIcon(
+                    isEmpathized: false,
+                    size: 20,
                   ),
                   const SizedBox(width: 6),
                   const Text(

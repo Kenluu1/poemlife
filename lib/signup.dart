@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/signin.dart';
 import 'package:poemlife/API.dart';
+import 'package:poemlife/homepage.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -18,7 +19,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nimController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
 
@@ -28,7 +28,6 @@ class _SignUpPageState extends State<SignUpPage> {
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
-    _nimController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -44,11 +43,11 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 40),
               Center(
                 child: Image.asset(
-                  'assets/logoo.png',
+                  'assets/logo.png',
                   height: 100,
                   errorBuilder: (context, error, stackTrace) => const Icon(
                     Icons.history_edu,
-                    size: 100,
+                    size: 150,
                     color: Color(0xFF0D5C53),
                   ),
                 ),
@@ -85,22 +84,18 @@ class _SignUpPageState extends State<SignUpPage> {
 
                           _buildCustomTextField(
                             label: "Username",
-                            hint: "Name",
+                            hint: "John_doe",
                             controller: _usernameController,
                           ),
                           _buildCustomTextField(
                             label: "Email",
-                            hint: "email@gmail.com",
+                            hint: "Email@gmail.com",
                             controller: _emailController,
                           ),
-                          _buildCustomTextField(
-                            label: "Student ID",
-                            hint: "2702273510",
-                            controller: _nimController,
-                          ),
+
                           _buildCustomTextField(
                             label: "Password",
-                            hint: "Masukkan password",
+                            hint: "Enter Password",
                             isPassword: true,
                             controller: _passwordController,
                           ),
@@ -124,7 +119,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             String? errorMessage = await AuthService().registerUser(
                               _usernameController.text,
                               _passwordController.text,
-                              _nimController.text,
+                              "",
                               _emailController.text,
                             );
 
@@ -136,14 +131,14 @@ class _SignUpPageState extends State<SignUpPage> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Registrasi sukses! Silakan Sign In.'),
+                                    content: Text('Registration success, Welcome.'),
                                     backgroundColor: Colors.green,
                                   ),
                                 );
 
                                 Navigator.pushReplacement(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const SignInPage()),
+                                  MaterialPageRoute(builder: (context) => HomePage()),
                                 );
                               }
                             } else {

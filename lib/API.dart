@@ -1,11 +1,22 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static final ValueNotifier<int> followEvents = ValueNotifier<int>(0);
+  static final ValueNotifier<Map<String, dynamic>?> reactionEvents = ValueNotifier<Map<String, dynamic>?>(null);
+  static final ValueNotifier<String?> currentUserAvatar = ValueNotifier<String?>(null);
+  static final ValueNotifier<int> currentUserAvatarVersion = ValueNotifier<int>(0);
 
+  static void notifyReaction(Map<String, dynamic> data) {
+    reactionEvents.value = {
+      ...data,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+  }
+  // static const String baseUrl = 'http://localhost:3005/api';
   static const String baseUrl = 'http://103.230.81.76:3005/api';
 
   static Future<Map<String, String>> _getHeaders() async {
@@ -15,6 +26,62 @@ class ApiService {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
+  }
+
+  static String sanitizeImageUrl(String url) {
+    if (!url.startsWith('http') && !url.startsWith('/assets/')) {
+      return url;
+    }
+    if (url.contains('localhost:3005')) {
+      if (url.contains('/assets/avatars/')) {
+        int idx = url.indexOf('/assets/avatars/');
+        return 'http://103.230.81.76:3005' + url.substring(idx);
+      }
+      if (url.contains('/assets/banners/')) {
+        int idx = url.indexOf('/assets/banners/');
+        return 'http://103.230.81.76:3005' + url.substring(idx);
+      }
+      if (url.contains('/assets/images/')) {
+        int idx = url.indexOf('/assets/images/');
+        return 'http://103.230.81.76:3005' + url.substring(idx);
+      }
+      return url.replaceAll('http://localhost:3005', 'http://103.230.81.76:3005');
+    }
+    if (url.startsWith('/assets/')) {
+      return 'http://103.230.81.76:3005' + url;
+    }
+    return url;
+  }
+
+  static dynamic _sanitizeJson(dynamic json) {
+    if (json is Map) {
+      final Map<String, dynamic> sanitizedMap = {};
+      json.forEach((key, value) {
+        final String stringKey = key.toString();
+        if (value is String) {
+          sanitizedMap[stringKey] = sanitizeImageUrl(value);
+        } else if (value is Map || value is List) {
+          sanitizedMap[stringKey] = _sanitizeJson(value);
+        } else {
+          sanitizedMap[stringKey] = value;
+        }
+      });
+      return sanitizedMap;
+    } else if (json is List) {
+      return json.map((item) => _sanitizeJson(item)).toList();
+    } else if (json is String) {
+      return sanitizeImageUrl(json);
+    }
+    return json;
+  }
+
+  static dynamic _decodeAndSanitize(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return _sanitizeJson(decoded);
+    } catch (_) {
+      return jsonDecode(body);
+    }
   }
 
   Future<String?> registerUser(
@@ -36,7 +103,7 @@ class ApiService {
         }),
       );
 
-      final responseData = jsonDecode(response.body);
+      final responseData = _decodeAndSanitize(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('Register Sukses: $responseData');
 
@@ -73,7 +140,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         print('Login Sukses: $responseData');
 
         if (responseData['data'] != null &&
@@ -122,7 +189,7 @@ class ApiService {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as List<dynamic>;
         }
@@ -142,7 +209,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as Map<String, dynamic>;
         }
@@ -220,9 +287,20 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
-          return responseData['data'] as Map<String, dynamic>;
+          final profileData = responseData['data'] as Map<String, dynamic>;
+          final avatar = profileData['image']?.toString();
+          final prefs = await SharedPreferences.getInstance();
+          final currentUserId = prefs.getInt('userId');
+          if (userId == currentUserId) {
+            if (avatar != null && avatar.isNotEmpty) {
+              currentUserAvatar.value = avatar;
+            } else {
+              currentUserAvatar.value = null;
+            }
+          }
+          return profileData;
         }
       }
       return null;
@@ -245,7 +323,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as List<dynamic>;
         }
@@ -264,7 +342,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as List<dynamic>;
         }
@@ -284,7 +362,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as List<dynamic>;
         }
@@ -305,7 +383,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data'] as List<dynamic>;
         }
@@ -373,7 +451,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           final List<dynamic> list = responseData['data'];
           return list.map((item) => item as Map<String, dynamic>).toList();
@@ -421,7 +499,7 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           final List<dynamic> list = responseData['data'];
           return list.map((item) => item as Map<String, dynamic>).toList();
@@ -498,7 +576,22 @@ class ApiService {
         }),
       );
 
+      print('UpdateProfile Response status: ${response.statusCode}');
+      print('UpdateProfile Response body: ${response.body}');
+
       if (response.statusCode == 200) {
+        final responseData = _decodeAndSanitize(response.body);
+        if (responseData['error'] == false && responseData['data'] != null) {
+          final profileData = responseData['data'] as Map<String, dynamic>;
+          final avatar = profileData['image']?.toString();
+          if (avatar != null && avatar.isNotEmpty) {
+            currentUserAvatar.value = avatar;
+            currentUserAvatarVersion.value++;
+          } else {
+            currentUserAvatar.value = null;
+            currentUserAvatarVersion.value++;
+          }
+        }
         return true;
       }
       return false;
@@ -518,7 +611,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           final List<dynamic> list = responseData['data'];
           return list
@@ -560,7 +653,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = _decodeAndSanitize(response.body);
         if (responseData['error'] == false && responseData['data'] != null) {
           return responseData['data']['generated'] as String?;
         }
@@ -609,3 +702,159 @@ class ApiService {
 }
 
 class AuthService extends ApiService {}
+
+class EmpathyIcon extends StatefulWidget {
+  final bool isEmpathized;
+  final double size;
+  final VoidCallback? onTap;
+
+  const EmpathyIcon({
+    super.key,
+    required this.isEmpathized,
+    this.size = 20.0,
+    this.onTap,
+  });
+
+  @override
+  State<EmpathyIcon> createState() => _EmpathyIconState();
+}
+
+class _EmpathyIconState extends State<EmpathyIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.35).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.35, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant EmpathyIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isEmpathized != widget.isEmpathized && widget.isEmpathized) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward(from: 0.0);
+    if (widget.onTap != null) {
+      widget.onTap!();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String assetPath = widget.isEmpathized ? 'assets/poelikes.png' : 'assets/poelike.png';
+
+    Widget iconWidget = Image.asset(
+      assetPath,
+      width: widget.size,
+      height: widget.size,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return CustomPaint(
+          size: Size(widget.size, widget.size),
+          painter: _EmpathyPainter(isEmpathized: widget.isEmpathized),
+        );
+      },
+    );
+
+    return GestureDetector(
+      onTap: widget.onTap != null ? _handleTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: iconWidget,
+      ),
+    );
+  }
+}
+
+class _EmpathyPainter extends CustomPainter {
+  final bool isEmpathized;
+
+  _EmpathyPainter({required this.isEmpathized});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double radius = size.width / 2;
+    final Offset center = Offset(radius, radius);
+    final Rect rect = Rect.fromCircle(center: center, radius: radius - 1);
+
+    if (isEmpathized) {
+      final Paint leftPaint = Paint()
+        ..color = const Color(0xFF7583A8)
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(rect, 1.5708, 3.14159, true, leftPaint);
+
+      final Paint rightPaint = Paint()
+        ..color = const Color(0xFFCC3333)
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(rect, -1.5708, 3.14159, true, rightPaint);
+    }
+
+    final Paint linePaint = Paint()
+      ..color = const Color(0xFF4A4444)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.08
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius - 1, linePaint);
+
+    canvas.drawLine(
+      Offset(radius, 1),
+      Offset(radius, size.height - 1),
+      linePaint,
+    );
+
+    final double topY = size.height * 0.35;
+    canvas.drawLine(
+      Offset(size.width * 0.15, topY),
+      Offset(size.width * 0.85, topY),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.70, topY - size.height * 0.12),
+      Offset(size.width * 0.85, topY),
+      linePaint,
+    );
+
+    final double botY = size.height * 0.65;
+    canvas.drawLine(
+      Offset(size.width * 0.15, botY),
+      Offset(size.width * 0.85, botY),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.30, botY + size.height * 0.12),
+      Offset(size.width * 0.15, botY),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmpathyPainter oldDelegate) {
+    return oldDelegate.isEmpathized != isEmpathized;
+  }
+}

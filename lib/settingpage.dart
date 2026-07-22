@@ -56,51 +56,94 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         backgroundColor: Colors.white,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 24.0, bottom: 16.0, left: 16.0, right: 16.0),
-              child: Column(
-                children: [
-                  Text(
-                    T.s("logout_confirm_title"),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    T.s("logout_confirm_desc"),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black87, fontSize: 14),
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Logging Out",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
-            ),
-            const Divider(height: 1, color: Colors.grey),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignInPage()), // Sesuaikan nama class Sign In
+              const SizedBox(height: 12),
+              const Text(
+                "Oh, no! You'll miss a lot of things by logging out. Are you sure want to log out?",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('token');
+                    await prefs.remove('userId');
+                    await prefs.remove('username');
+                    await prefs.remove('email');
+                    await prefs.remove('nim');
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SignInPage()),
                         (Route<dynamic> route) => false,
-                  );
-                },
-                child: Text(T.s("logout_confirm_title"), style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF993B3B),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text(
+                    "Logout",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const Divider(height: 1, color: Colors.grey),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(T.s("cancel"), style: const TextStyle(color: Colors.black, fontSize: 16)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -168,10 +211,21 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: NetworkImage(_avatarUrl),
+                ValueListenableBuilder<String?>(
+                  valueListenable: ApiService.currentUserAvatar,
+                  builder: (context, currentAvatar, _) {
+                    final baseAvatar = (currentAvatar != null && currentAvatar.isNotEmpty)
+                        ? currentAvatar
+                        : _avatarUrl;
+                    final displayUrl = baseAvatar.contains('?')
+                        ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                        : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}';
+                    return CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: NetworkImage(displayUrl),
+                    );
+                  },
                 ),
                 const SizedBox(width: 16),
                 Column(
@@ -184,17 +238,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (_nim.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _nim,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 const Spacer(),

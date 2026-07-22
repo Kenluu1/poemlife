@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:poemlife/draftpage.dart';
-import 'package:poemlife/favouritepage.dart';
 import 'package:poemlife/settingpage.dart';
 import 'package:poemlife/detailpage.dart';
 import 'package:shimmer/shimmer.dart';
@@ -223,23 +222,18 @@ class _ProfilePageState extends State<ProfilePage> {
         shape: BoxShape.circle,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
       ),
-      child: PopupMenuButton(
-        icon: const Icon(Icons.menu, color: Colors.black87, size: 20),
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(),
-        onSelected: (value) {
-          if (value == 'settings') {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage())).then((_) {
-              _loadInitialData();
-            });
-          } else if (value == 'favourites') {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritePage()));
-          }
+      child: IconButton(
+        icon: const Icon(Icons.settings, color: Colors.black87, size: 20),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SettingsPage()),
+          ).then((_) {
+            _loadInitialData();
+          });
         },
-        itemBuilder: (BuildContext context) => <PopupMenuEntry>[
-           PopupMenuItem(value: 'settings', child: Text(T.s('settings'))),
-           PopupMenuItem(value: 'favourites', child: Text(T.s('favourites'))),
-         ],
+        constraints: const BoxConstraints(),
+        padding: const EdgeInsets.all(8),
       ),
     );
   }
@@ -272,13 +266,6 @@ class _ProfilePageState extends State<ProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_fullname.isNotEmpty ? _fullname : _username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          if (_nim.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              _nim,
-              style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
-            ),
-          ],
           const SizedBox(height: 8),
           Text(
             _bio,
@@ -441,12 +428,30 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: NetworkImage(cardAvatar),
-                onBackgroundImageError: (_, __) {},
-              ),
+              poem['authorId'] == _userId
+                  ? ValueListenableBuilder<String?>(
+                      valueListenable: ApiService.currentUserAvatar,
+                      builder: (context, currentAvatar, _) {
+                        final baseAvatar = (currentAvatar != null && currentAvatar.isNotEmpty)
+                            ? currentAvatar
+                            : cardAvatar;
+                        final displayUrl = baseAvatar.contains('?')
+                            ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                            : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}';
+                        return CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.grey.shade200,
+                          backgroundImage: NetworkImage(displayUrl),
+                          onBackgroundImageError: (_, __) {},
+                        );
+                      },
+                    )
+                  : CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: NetworkImage(cardAvatar),
+                      onBackgroundImageError: (_, __) {},
+                    ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,9 +504,46 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                  EmpathyIcon(
+                    isEmpathized: poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1,
+                    size: 18,
+                    onTap: () async {
+                      final bool currentlyEmpathized = poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1;
+                      final int currentCount = int.tryParse((poem['empathy_count'] ?? poem['empathies'] ?? 0).toString()) ?? 0;
+                      final nextState = !currentlyEmpathized;
+                      final nextCount = nextState ? currentCount + 1 : (currentCount > 0 ? currentCount - 1 : 0);
+                      setState(() {
+                        poem['is_empathized'] = nextState;
+                        poem['has_empathy_reaction'] = nextState;
+                        poem['empathy_count'] = nextCount;
+                      });
+                      ApiService.notifyReaction({
+                        'poem_id': poem['id'],
+                        'is_empathized': nextState,
+                        'has_empathy_reaction': nextState,
+                        'empathy_count': nextCount,
+                      });
+                      bool success = await ApiService().toggleReaction(poem['id'], 2);
+                      if (!success) {
+                        setState(() {
+                          poem['is_empathized'] = currentlyEmpathized;
+                          poem['has_empathy_reaction'] = currentlyEmpathized;
+                          poem['empathy_count'] = currentCount;
+                        });
+                        ApiService.notifyReaction({
+                          'poem_id': poem['id'],
+                          'is_empathized': currentlyEmpathized,
+                          'has_empathy_reaction': currentlyEmpathized,
+                          'empathy_count': currentCount,
+                        });
+                      }
+                    },
+                  ),
                   const SizedBox(width: 4),
-                  const Text("1k", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    (poem['empathy_count'] ?? poem['empathies'] ?? 0).toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () async {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:poemlife/API.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -213,6 +214,9 @@ class _AddPageState extends State<AddPage> {
     String insertion = word;
 
     if (selection.start >= 0) {
+      if (selection.start > 0 && !text[selection.start - 1].contains(RegExp(r'\s'))) {
+        insertion = ' $insertion';
+      }
       final newText = text.replaceRange(
         selection.start,
         selection.end,
@@ -225,87 +229,26 @@ class _AddPageState extends State<AddPage> {
         ),
       );
     } else {
+      if (text.isNotEmpty && !text.endsWith(' ') && !text.endsWith('\n')) {
+        insertion = ' $insertion';
+      }
       _contentController.text = text + insertion;
     }
   }
 
   void _showWordBankBottomSheet() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Center(
-                child: Text(
-                  'Word Bank / Kosakata',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _wordBank.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(vertical: 30),
-                      child: const Center(
-                        child: Text(
-                          'No words in word bank yet',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    )
-                  : SizedBox(
-                      height: 250,
-                      child: ListView.separated(
-                        itemCount: _wordBank.length,
-                        separatorBuilder: (context, index) =>
-                            const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final item = Map<String, dynamic>.from(
-                            _wordBank[index],
-                          );
-                          final eng = item['word_eng'] ?? '';
-                          final ind = item['word_id'] ?? '';
-                          final exp =
-                              item['explain_eng'] ?? item['explain_id'] ?? '';
-
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              '$eng ($ind)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: maroon,
-                              ),
-                            ),
-                            subtitle: exp.isNotEmpty
-                                ? Text(
-                                    exp,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12),
-                                  )
-                                : null,
-                            onTap: () {
-                              _insertWord(eng);
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      ),
-                    ),
-            ],
-          ),
+        return _WordBankDialog(
+          wordBank: _wordBank,
+          initialCategory: widget.selectedCategory,
+          onAddWords: (selectedWords) {
+            if (selectedWords.isNotEmpty) {
+              final wordsToInsert = selectedWords.join(' ');
+              _insertWord(wordsToInsert);
+            }
+          },
         );
       },
     );
@@ -528,149 +471,179 @@ class _AddPageState extends State<AddPage> {
   }
 
   Future<bool> _onWillPop() async {
-    return await showDialog(
+    return await showDialog<bool>(
           context: context,
           builder: (context) => Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
             ),
             backgroundColor: Colors.white,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    top: 24.0,
-                    bottom: 16.0,
-                    left: 16.0,
-                    right: 16.0,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Save as Draft",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        T.s('save_draft_question'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        T.s('draft_dialog_desc'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.black87, fontSize: 14),
-                      ),
-                    ],
+                  const SizedBox(height: 12),
+                  const Text(
+                    "It's ok if you want to take a break from writing this poem. Do you want to save this poem as draft ?",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
                   ),
-                ),
-                const Divider(height: 1, color: Colors.grey),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () async {
-                      Navigator.pop(context, true); // Pop dialog
-                      // Show loading
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF993B3B),
-                          ),
-                        ),
-                      );
-                      String alignPrefix = '';
-                      if (_textAlign == TextAlign.left) {
-                        alignPrefix = '[align:left]';
-                      } else if (_textAlign == TextAlign.right) {
-                        alignPrefix = '[align:right]';
-                      } else {
-                        alignPrefix = '[align:center]';
-                      }
-                      bool success;
-                      if (widget.editPoemId != null) {
-                        success = await ApiService().updatePoem(
-                          poemId: widget.editPoemId!,
-                          title: _titleController.text.isEmpty
-                              ? T.s('untitled')
-                              : _titleController.text,
-                          content:
-                              alignPrefix +
-                              (_contentController.text.isEmpty
-                                  ? T.s('default_poem_content')
-                                  : _contentController.text),
-                          categoryId:
-                              widget.selectedCategory['id'] ?? 1,
-                          published: 0,
-                        );
-                      } else {
-                        success = await ApiService().createPoem(
-                          title: _titleController.text.isEmpty
-                              ? T.s('untitled')
-                              : _titleController.text,
-                          content:
-                              alignPrefix +
-                              (_contentController.text.isEmpty
-                                  ? T.s('default_poem_content')
-                                  : _contentController.text),
-                          categoryId:
-                              widget.selectedCategory['id'] ?? 1,
-                          published: 0,
-                        );
-                      }
-                      if (context.mounted) {
-                        Navigator.pop(context); // Pop loading
-                        Navigator.pop(context); // Pop AddPage
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              success
-                                  ? T.s('draft_save_success')
-                                  : T.s('draft_save_fail'),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context, true); // Pop dialog
+                        // Show loading
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF993B3B),
                             ),
-                            backgroundColor: success
-                                ? Colors.green
-                                : Colors.red,
                           ),
                         );
-                      }
-                    },
-                    child: Text(
-                      T.s('save'),
-                      style: const TextStyle(color: Colors.black, fontSize: 16),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: Colors.grey),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.pop(context, true);
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      T.s('dont_save'),
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: Colors.grey),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(
-                      T.s('cancel'),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        String alignPrefix = '';
+                        if (_textAlign == TextAlign.left) {
+                          alignPrefix = '[align:left]';
+                        } else if (_textAlign == TextAlign.right) {
+                          alignPrefix = '[align:right]';
+                        } else {
+                          alignPrefix = '[align:center]';
+                        }
+                        bool success;
+                        if (widget.editPoemId != null) {
+                          success = await ApiService().updatePoem(
+                            poemId: widget.editPoemId!,
+                            title: _titleController.text.isEmpty
+                                ? T.s('untitled')
+                                : _titleController.text,
+                            content:
+                                alignPrefix +
+                                (_contentController.text.isEmpty
+                                    ? T.s('default_poem_content')
+                                    : _contentController.text),
+                            categoryId:
+                                widget.selectedCategory['id'] ?? 1,
+                            published: 0,
+                          );
+                        } else {
+                          success = await ApiService().createPoem(
+                            title: _titleController.text.isEmpty
+                                ? T.s('untitled')
+                                : _titleController.text,
+                            content:
+                                alignPrefix +
+                                (_contentController.text.isEmpty
+                                    ? T.s('default_poem_content')
+                                    : _contentController.text),
+                            categoryId:
+                                widget.selectedCategory['id'] ?? 1,
+                            published: 0,
+                          );
+                        }
+                        if (context.mounted) {
+                          Navigator.pop(context); // Pop loading
+                          Navigator.pop(context); // Pop AddPage
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success
+                                    ? T.s('draft_save_success')
+                                    : T.s('draft_save_fail'),
+                              ),
+                              backgroundColor: success
+                                  ? Colors.green
+                                  : Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF993B3B),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Text(
+                        "Save",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                        Navigator.pop(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Text(
+                        "Don't Save",
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ) ??
@@ -950,6 +923,449 @@ class _AddPageState extends State<AddPage> {
                   _textAlign = TextAlign.center;
                 });
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WordBankDialog extends StatefulWidget {
+  final List<dynamic> wordBank;
+  final Map<String, dynamic>? initialCategory;
+  final Function(List<String> selectedWords) onAddWords;
+
+  const _WordBankDialog({
+    super.key,
+    required this.wordBank,
+    this.initialCategory,
+    required this.onAddWords,
+  });
+
+  @override
+  State<_WordBankDialog> createState() => _WordBankDialogState();
+}
+
+class _WordBankDialogState extends State<_WordBankDialog> {
+  final Color maroon = const Color(0xFFA33B3B);
+
+  final List<String> _categories = [
+    'Healing Words',
+    'Hurting Words',
+  ];
+
+  late String _selectedCategory;
+  List<Map<String, dynamic>> _displayedWords = [];
+  final Set<String> _checkedWords = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initCategory();
+    _updateDisplayedWords();
+  }
+
+  void _initCategory() {
+    String target = 'Hurting Words';
+    if (widget.initialCategory != null) {
+      final name = widget.initialCategory!['name']?.toString().toLowerCase() ?? '';
+      final id = widget.initialCategory!['id'];
+      if (id == 1 || name.contains('heal') || name.contains('happy')) {
+        target = 'Healing Words';
+      } else if (id == 2 || name.contains('hurt') || name.contains('sad')) {
+        target = 'Hurting Words';
+      }
+    }
+    _selectedCategory = target;
+  }
+
+  List<Map<String, dynamic>> _getFilteredWords() {
+    final int targetCatId = _selectedCategory == 'Healing Words' ? 1 : 2;
+
+    final filtered = widget.wordBank.where((raw) {
+      if (raw is Map) {
+        final catId = raw['category_id'];
+        if (catId != null) {
+          return int.tryParse(catId.toString()) == targetCatId;
+        }
+      }
+      return true;
+    }).map((e) => Map<String, dynamic>.from(e)).toList();
+
+    return filtered;
+  }
+
+  void _updateDisplayedWords() {
+    final pool = _getFilteredWords();
+    pool.shuffle(Random());
+    setState(() {
+      _displayedWords = pool.take(5).toList();
+    });
+  }
+
+  void _onCategorySelected(String category) {
+    if (_selectedCategory != category) {
+      setState(() {
+        _selectedCategory = category;
+        _checkedWords.clear();
+      });
+      _updateDisplayedWords();
+    }
+  }
+
+  void _showExplanationDialog(BuildContext context, Map<String, dynamic> item) {
+    final eng = item['word_eng']?.toString() ?? item['word']?.toString() ?? '';
+    final ind = item['word_id']?.toString() ?? item['translation']?.toString() ?? '';
+    final expEng = item['explain_eng']?.toString() ?? '';
+    final expInd = item['explain_id']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: Title + Close Icon (X)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Word Explanation',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF5D5454),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // English Section
+                Text(
+                  eng,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: maroon,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '"$expEng"',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Divider(height: 1, thickness: 1, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                // Indonesian Section
+                Text(
+                  ind,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: maroon,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '"$expInd"',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Divider(height: 1, thickness: 1, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                // Understood Button
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Text(
+                        'Understood',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: maroon,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title
+            const Text(
+              'Hard to find the right\nwords ?',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Subtitle
+            Text(
+              'Find the right word bellow to express\nyour feeling.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Category Tabs
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _categories.map((cat) {
+                  final isSelected = cat == _selectedCategory;
+                  return GestureDetector(
+                    onTap: () => _onCategorySelected(cat),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 20),
+                      padding: const EdgeInsets.only(bottom: 4),
+                      decoration: isSelected
+                          ? BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: maroon,
+                                  width: 2.0,
+                                ),
+                              ),
+                            )
+                          : null,
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? maroon : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Words List Container (Pink Tinted Box)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF0F0),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: _displayedWords.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Center(
+                        child: Text(
+                          'No words available for this category',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: List.generate(_displayedWords.length, (index) {
+                        final item = _displayedWords[index];
+                        final wordEng = item['word_eng']?.toString() ?? item['word']?.toString() ?? '';
+                        final isChecked = _checkedWords.contains(wordEng);
+                        final isLast = index == _displayedWords.length - 1;
+
+                        return Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Row(
+                                children: [
+                                  // Word Title
+                                  Text(
+                                    wordEng,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Question mark icon button (?)
+                                  GestureDetector(
+                                    onTap: () => _showExplanationDialog(context, item),
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.black87,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: Text(
+                                          '?',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                            height: 1.1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // Checkbox
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Checkbox(
+                                      value: isChecked,
+                                      activeColor: maroon,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      side: const BorderSide(
+                                        color: Colors.black54,
+                                        width: 1.5,
+                                      ),
+                                      onChanged: (bool? val) {
+                                        setState(() {
+                                          if (val == true) {
+                                            _checkedWords.add(wordEng);
+                                          } else {
+                                            _checkedWords.remove(wordEng);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (!isLast)
+                              Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: Colors.grey[350],
+                              ),
+                          ],
+                        );
+                      }),
+                    ),
+            ),
+            const SizedBox(height: 20),
+            // Bottom Bar: Refresh Icon (Left) & Cancel/Add Buttons (Right)
+            Row(
+              children: [
+                // Refresh Button
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: Colors.black87,
+                    size: 24,
+                  ),
+                  onPressed: _updateDisplayedWords,
+                ),
+                const Spacer(),
+                // Cancel Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Add Button
+                GestureDetector(
+                  onTap: () {
+                    if (_checkedWords.isNotEmpty) {
+                      widget.onAddWords(_checkedWords.toList());
+                    } else if (_displayedWords.isNotEmpty) {
+                      final firstWord = _displayedWords.first['word_eng']?.toString() ?? '';
+                      if (firstWord.isNotEmpty) {
+                        widget.onAddWords([firstWord]);
+                      }
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Text(
+                      'Add',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: maroon,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

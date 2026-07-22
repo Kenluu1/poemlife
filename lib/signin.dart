@@ -37,8 +37,8 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: 50),
 
               Image.asset(
-                'assets/logoo.png',
-                height: 100,
+                'assets/logo.png',
+                height: 150,
               ),
               const SizedBox(height: 40),
 
@@ -149,7 +149,7 @@ class _SignInPageState extends State<SignInPage> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Login Gagal. Periksa kembali username dan password.'),
+                                  content: Text('Login failed. Please check your username and password.'),
                                   backgroundColor: Colors.red,
                                 ),
                               );

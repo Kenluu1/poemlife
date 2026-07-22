@@ -194,10 +194,10 @@ class _FavoritePageState extends State<FavoritePage> {
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundImage: NetworkImage(avatarUrl),
+                      backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                       backgroundColor: Colors.grey[200],
                       onBackgroundImageError: (_, __) {},
-                      child: const Icon(Icons.person, size: 20, color: Colors.white),
+                      child: avatarUrl.isNotEmpty ? null : const Icon(Icons.person, size: 20, color: Colors.white),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -236,9 +236,46 @@ class _FavoritePageState extends State<FavoritePage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                        EmpathyIcon(
+                          isEmpathized: poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1,
+                          size: 18,
+                          onTap: () async {
+                            final bool currentlyEmpathized = poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1;
+                            final int currentCount = int.tryParse((poem['empathy_count'] ?? poem['empathies'] ?? 0).toString()) ?? 0;
+                            final nextState = !currentlyEmpathized;
+                            final nextCount = nextState ? currentCount + 1 : (currentCount > 0 ? currentCount - 1 : 0);
+                            setState(() {
+                              poem['is_empathized'] = nextState;
+                              poem['has_empathy_reaction'] = nextState;
+                              poem['empathy_count'] = nextCount;
+                            });
+                            ApiService.notifyReaction({
+                              'poem_id': poem['id'],
+                              'is_empathized': nextState,
+                              'has_empathy_reaction': nextState,
+                              'empathy_count': nextCount,
+                            });
+                            bool success = await ApiService().toggleReaction(poem['id'], 2);
+                            if (!success) {
+                              setState(() {
+                                poem['is_empathized'] = currentlyEmpathized;
+                                poem['has_empathy_reaction'] = currentlyEmpathized;
+                                poem['empathy_count'] = currentCount;
+                              });
+                              ApiService.notifyReaction({
+                                'poem_id': poem['id'],
+                                'is_empathized': currentlyEmpathized,
+                                'has_empathy_reaction': currentlyEmpathized,
+                                'empathy_count': currentCount,
+                              });
+                            }
+                          },
+                        ),
                         const SizedBox(width: 4),
-                        const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(
+                          (poem['empathy_count'] ?? poem['empathies'] ?? 0).toString(),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
                         const SizedBox(width: 16),
                         Icon(Icons.favorite, size: 18, color: maroon),
                         const SizedBox(width: 4),

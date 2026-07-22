@@ -21,7 +21,37 @@ class _SadnessPageState extends State<SadnessPage> {
   @override
   void initState() {
     super.initState();
+    ApiService.reactionEvents.addListener(_onReactionEvent);
     _loadPoems();
+  }
+
+  @override
+  void dispose() {
+    ApiService.reactionEvents.removeListener(_onReactionEvent);
+    super.dispose();
+  }
+
+  void _onReactionEvent() {
+    final event = ApiService.reactionEvents.value;
+    if (event != null && mounted) {
+      final eventPoemId = event['id'] ?? event['poem_id'];
+      if (eventPoemId != null) {
+        setState(() {
+          for (var poem in _poems) {
+            final id = poem['id'];
+            if (id != null && id.toString() == eventPoemId.toString()) {
+              if (event.containsKey('is_liked')) poem['is_liked'] = event['is_liked'];
+              if (event.containsKey('love_count')) poem['love_count'] = event['love_count'];
+              if (event.containsKey('is_empathized')) poem['is_empathized'] = event['is_empathized'];
+              if (event.containsKey('has_empathy_reaction')) poem['has_empathy_reaction'] = event['has_empathy_reaction'];
+              if (event.containsKey('empathy_count')) poem['empathy_count'] = event['empathy_count'];
+              if (event.containsKey('is_bookmarked')) poem['is_bookmarked'] = event['is_bookmarked'];
+              if (event.containsKey('comment_count')) poem['comment_count'] = event['comment_count'];
+            }
+          }
+        });
+      }
+    }
   }
 
   Future<void> _loadPoems() async {
@@ -212,13 +242,35 @@ class _SadnessPageState extends State<SadnessPage> {
             },
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundImage: NetworkImage(avatarUrl),
-                  backgroundColor: Colors.grey.shade200,
-                  onBackgroundImageError: (_, __) {},
-                  child: const Icon(Icons.person, size: 20, color: Colors.white),
-                ),
+                poem['authorId'] == _currentUserId
+                    ? ValueListenableBuilder<String?>(
+                        valueListenable: ApiService.currentUserAvatar,
+                        builder: (context, currentAvatar, _) {
+                          final baseAvatar = (currentAvatar != null && currentAvatar.isNotEmpty)
+                              ? currentAvatar
+                              : avatarUrl;
+                          final hasImage = baseAvatar.isNotEmpty;
+                          final displayUrl = hasImage
+                              ? (baseAvatar.contains('?')
+                                  ? '$baseAvatar&v=${ApiService.currentUserAvatarVersion.value}'
+                                  : '$baseAvatar?v=${ApiService.currentUserAvatarVersion.value}')
+                              : '';
+                          return CircleAvatar(
+                            radius: 16,
+                            backgroundImage: hasImage ? NetworkImage(displayUrl) : null,
+                            backgroundColor: Colors.grey.shade200,
+                            onBackgroundImageError: (_, __) {},
+                            child: hasImage ? null : const Icon(Icons.person, size: 20, color: Colors.white),
+                          );
+                        },
+                      )
+                    : CircleAvatar(
+                        radius: 16,
+                        backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                        backgroundColor: Colors.grey.shade200,
+                        onBackgroundImageError: (_, __) {},
+                        child: avatarUrl.isNotEmpty ? null : const Icon(Icons.person, size: 20, color: Colors.white),
+                      ),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,12 +312,13 @@ class _SadnessPageState extends State<SadnessPage> {
                   setState(() {
                     poem['is_liked'] = result['is_liked'];
                     poem['love_count'] = result['love_count'];
+                    poem['is_empathized'] = result['is_empathized'];
+                    poem['has_empathy_reaction'] = result['has_empathy_reaction'];
+                    poem['empathy_count'] = result['empathy_count'];
                     poem['is_bookmarked'] = result['is_bookmarked'];
                     poem['comment_count'] = result['comment_count'];
                   });
                 }
-              } else {
-                _loadPoems();
               }
             },
             child: Text(
@@ -283,9 +336,46 @@ class _SadnessPageState extends State<SadnessPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.language, size: 18, color: Colors.grey[600]),
+                  EmpathyIcon(
+                    isEmpathized: poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1,
+                    size: 18,
+                    onTap: () async {
+                      final bool currentlyEmpathized = poem['is_empathized'] == true || poem['has_empathy_reaction'] == true || poem['has_empathy_reaction'] == 1;
+                      final int currentCount = int.tryParse((poem['empathy_count'] ?? poem['empathies'] ?? 0).toString()) ?? 0;
+                      final nextState = !currentlyEmpathized;
+                      final nextCount = nextState ? currentCount + 1 : (currentCount > 0 ? currentCount - 1 : 0);
+                      setState(() {
+                        poem['is_empathized'] = nextState;
+                        poem['has_empathy_reaction'] = nextState;
+                        poem['empathy_count'] = nextCount;
+                      });
+                      ApiService.notifyReaction({
+                        'poem_id': poem['id'],
+                        'is_empathized': nextState,
+                        'has_empathy_reaction': nextState,
+                        'empathy_count': nextCount,
+                      });
+                      bool success = await ApiService().toggleReaction(poem['id'], 2);
+                      if (!success) {
+                        setState(() {
+                          poem['is_empathized'] = currentlyEmpathized;
+                          poem['has_empathy_reaction'] = currentlyEmpathized;
+                          poem['empathy_count'] = currentCount;
+                        });
+                        ApiService.notifyReaction({
+                          'poem_id': poem['id'],
+                          'is_empathized': currentlyEmpathized,
+                          'has_empathy_reaction': currentlyEmpathized,
+                          'empathy_count': currentCount,
+                        });
+                      }
+                    },
+                  ),
                   const SizedBox(width: 4),
-                  const Text("394", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    (poem['empathy_count'] ?? poem['empathies'] ?? 0).toString(),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () async {
